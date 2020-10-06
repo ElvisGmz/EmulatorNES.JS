@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script type="text/javascript" src="./jsnes.min.js"></script>
+	<script type="text/javascript" src="./nes-embed.js"></script>
+	<link rel="stylesheet" href="./style.css">
+	<title>NES Emulator.JS</title>
+</head>
+<body onload="nes_load_url('nes-canvas', './Super Mario Bros.nes');">
+	<div class="container">
+		<canvas id="nes-canvas" width="256" height="240" />
+	</div>
+	<div>
+		<!-- <h3>Selecciona tu ROM</h3> -->
+		<!-- <input type="file" name="" id="romFile" accept=".nes"> -->
+	</div>
+	<!-- <script>
+		const rom = document.querySelector('#romFile')
+		rom.onchange = (e) => {
+			var reader = new FileReader()
+			reader.readAsDataURL(event.srcElement.files[0])
+			var me = this
+			reader.onload = function (){
+				var fileContent = reader.result
+				nes_load_url("nes-canvas",  fileContent)
+			}
+		}
+	</script> -->
+	<p>DPad: Arrow keys
+		<br/>Start: Return, Select: Tab
+		<br/>A Button: A, B Button: S</p>
+</body>
+</html>
