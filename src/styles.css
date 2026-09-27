@@ -1,0 +1,478 @@
+@import "tailwindcss";
+
+@custom-variant touch (@media (hover: none) and (pointer: coarse));
+
+@theme {
+  --font-pixel: "Press Start 2P", ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-ink: #0e0f13;
+  --color-panel: #161820;
+  --color-panel-raised: #1e212b;
+  --color-line: #2a2e3a;
+  --color-text: #eceef3;
+  --color-muted: #9aa1ae;
+  --color-accent: #e4002b;
+  --color-accent-strong: #ff2d52;
+  --color-pad: #262a34;
+  --color-pad-edge: #0a0b0e;
+}
+
+@layer base {
+  :root {
+    --header-height: 3.5rem;
+    --toolbar-height: 3.5rem;
+    --page-gutter: 1rem;
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink font-sans text-text antialiased;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-strong;
+  }
+
+  kbd {
+    @apply inline-flex min-w-6 items-center justify-center rounded-md border border-line bg-panel-raised px-1.5 py-0.5 font-sans text-xs text-text;
+    box-shadow: inset 0 -2px 0 var(--color-pad-edge);
+  }
+}
+
+@layer components {
+  /* Shell */
+  .app-shell {
+    display: grid;
+    grid-template-rows: var(--header-height) minmax(0, 1fr);
+    height: 100dvh;
+    overflow: clip;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .app-header {
+    @apply flex items-center justify-between border-b border-line;
+    padding-inline: var(--page-gutter);
+  }
+
+  .brand {
+    @apply flex items-center gap-2.5 rounded-md;
+  }
+
+  .app-main {
+    @apply relative grid min-h-0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 64rem) {
+    .app-main {
+      grid-template-columns: minmax(0, 1fr) 22rem;
+    }
+  }
+
+  /* Buttons */
+  .chip-button {
+    @apply inline-flex h-9 items-center gap-2 rounded-full border border-line bg-panel px-3.5 text-sm font-medium transition-colors hover:border-muted/50 hover:bg-panel-raised;
+  }
+
+  .icon-button {
+    @apply inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-panel-raised hover:text-text;
+  }
+
+  .icon-button[data-active] {
+    @apply bg-accent/15 text-accent-strong;
+  }
+
+  .primary-button {
+    @apply inline-flex h-11 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong;
+  }
+
+  /* Player */
+  .player {
+    @apply flex min-h-0 flex-col;
+  }
+
+  .screen-area {
+    @apply flex min-h-0 flex-1 items-center justify-center p-4;
+  }
+
+  .screen {
+    @apply relative overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-line;
+    aspect-ratio: 240 / 224;
+    width: min(100%, calc((100dvh - var(--header-height) - var(--toolbar-height) - 2rem) * 240 / 224));
+  }
+
+  .screen canvas {
+    @apply block size-full;
+    image-rendering: pixelated;
+  }
+
+  .screen:fullscreen {
+    @apply rounded-none ring-0;
+    width: 100%;
+    height: 100%;
+    background: black;
+  }
+
+  .screen:fullscreen canvas {
+    object-fit: contain;
+  }
+
+  .screen-overlay {
+    @apply absolute inset-0 flex flex-col items-center justify-center gap-4 bg-ink/80 p-6 text-center backdrop-blur-sm;
+  }
+
+  .screen-overlay[hidden] {
+    display: none;
+  }
+
+  .loader {
+    @apply size-8 animate-spin rounded-full border-4 border-line border-t-accent;
+  }
+
+  .toolbar {
+    @apply mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4;
+    min-height: var(--toolbar-height);
+  }
+
+  .now-playing {
+    @apply flex min-w-0 flex-col leading-tight;
+  }
+
+  .toolbar-actions {
+    @apply flex shrink-0 items-center gap-0.5;
+  }
+
+  /* Touch controls */
+  .touch-controls {
+    display: none;
+  }
+
+  .touch-controls {
+    @variant touch {
+      @apply relative grid flex-1 items-center gap-y-3 px-6 pb-4 select-none;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr auto;
+      grid-template-areas:
+        "dpad actions"
+        "meta meta";
+      touch-action: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+  }
+
+  .dpad {
+    grid-area: dpad;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    width: clamp(8rem, 36vw, 10.5rem);
+    aspect-ratio: 1;
+    justify-self: start;
+  }
+
+  .dpad,
+  .meta-buttons,
+  .action-buttons {
+    touch-action: none;
+  }
+
+  .dpad-arrow,
+  .dpad-center {
+    @apply bg-pad;
+    box-shadow:
+      inset 0 2px 0 rgb(255 255 255 / 0.06),
+      0 4px 0 var(--color-pad-edge);
+  }
+
+  .dpad-arrow[data-pressed] {
+    @apply bg-accent;
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--color-pad-edge);
+  }
+
+  .dpad-up {
+    grid-area: 1 / 2;
+    border-radius: 0.6rem 0.6rem 0 0;
+  }
+
+  .dpad-left {
+    grid-area: 2 / 1;
+    border-radius: 0.6rem 0 0 0.6rem;
+  }
+
+  .dpad-center {
+    grid-area: 2 / 2;
+  }
+
+  .dpad-right {
+    grid-area: 2 / 3;
+    border-radius: 0 0.6rem 0.6rem 0;
+  }
+
+  .dpad-down {
+    grid-area: 3 / 2;
+    border-radius: 0 0 0.6rem 0.6rem;
+  }
+
+  .meta-buttons {
+    grid-area: meta;
+    @apply flex justify-center gap-4;
+  }
+
+  .meta-button {
+    @apply flex h-8 min-w-16 items-center justify-center rounded-full bg-pad px-3 text-[0.6rem] font-bold tracking-widest text-muted uppercase;
+    box-shadow: 0 3px 0 var(--color-pad-edge);
+  }
+
+  .meta-button[data-pressed] {
+    @apply bg-panel-raised text-text;
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--color-pad-edge);
+  }
+
+  .action-buttons {
+    grid-area: actions;
+    @apply relative justify-self-end;
+    width: clamp(8.5rem, 38vw, 11rem);
+    aspect-ratio: 1.15;
+  }
+
+  .action-button {
+    @apply absolute flex items-center justify-center rounded-full bg-accent font-pixel text-sm text-white/90;
+    width: 46%;
+    aspect-ratio: 1;
+    box-shadow:
+      inset 0 3px 0 rgb(255 255 255 / 0.18),
+      0 5px 0 #7a0017;
+  }
+
+  .action-button[data-pressed] {
+    @apply bg-accent-strong;
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #7a0017;
+  }
+
+  .action-a {
+    top: 0;
+    right: 0;
+  }
+
+  .action-b {
+    bottom: 0;
+    left: 0;
+  }
+
+  /* Library */
+  .library {
+    @apply flex min-h-0 flex-col gap-4 overflow-y-auto border-l border-line bg-panel p-4;
+  }
+
+  .library-header {
+    @apply flex items-center justify-between;
+  }
+
+  .library-backdrop {
+    display: none;
+  }
+
+  @media (max-width: 63.999rem) {
+    .library {
+      @apply fixed inset-x-0 bottom-0 z-30 max-h-[85dvh] rounded-t-3xl border-t border-l-0 shadow-2xl;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+      transform: translateY(100%);
+      visibility: hidden;
+      transition:
+        transform 250ms ease,
+        visibility 0s linear 250ms;
+    }
+
+    .library[data-open] {
+      transform: translateY(0);
+      visibility: visible;
+      transition: transform 250ms ease;
+    }
+
+    .library[data-open] ~ .library-backdrop {
+      @apply fixed inset-0 z-20 block bg-black/60;
+    }
+  }
+
+  .dropzone {
+    @apply flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 border-dashed border-line px-4 py-5 text-center text-sm transition-colors hover:border-accent/70 hover:bg-accent/5;
+  }
+
+  .dropzone:focus-within {
+    @apply border-accent-strong;
+  }
+
+  .rom-list {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .rom-item {
+    @apply flex items-center gap-1 rounded-xl border border-transparent bg-panel-raised/60 transition-colors hover:border-line;
+  }
+
+  .rom-item[data-active] {
+    @apply border-accent/60 bg-accent/10;
+  }
+
+  .rom-play {
+    @apply flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2.5 text-left;
+  }
+
+  .rom-cover {
+    @apply flex size-11 shrink-0 items-center justify-center rounded-lg bg-pad font-pixel text-xs text-accent-strong;
+  }
+
+  /* Dialog, overlays & toasts */
+  .help-dialog {
+    @apply m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-5 text-text shadow-2xl;
+  }
+
+  .help-dialog::backdrop {
+    @apply bg-black/60 backdrop-blur-sm;
+  }
+
+  .controls-table {
+    @apply mt-4 w-full text-left text-sm;
+  }
+
+  .controls-table th {
+    @apply pb-2 text-xs font-medium tracking-wider text-muted uppercase;
+  }
+
+  .controls-table td {
+    @apply border-t border-line py-2.5 pr-2 align-middle;
+  }
+
+  .shortcut-list {
+    @apply grid grid-cols-2 gap-2 text-sm;
+  }
+
+  .shortcut-list li {
+    @apply flex items-center gap-2;
+  }
+
+  .drop-overlay {
+    @apply fixed inset-4 z-50 flex flex-col items-center justify-center gap-4 rounded-3xl border-4 border-dashed border-accent bg-ink/90 text-accent-strong;
+  }
+
+  .drop-overlay[hidden] {
+    display: none;
+  }
+
+  .toasts {
+    @apply pointer-events-none fixed inset-x-0 top-4 z-50 flex flex-col items-center gap-2 px-4;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .toast {
+    @apply pointer-events-auto max-w-md rounded-xl border border-line bg-panel-raised px-4 py-3 text-sm shadow-xl;
+    animation: toast-in 200ms ease-out;
+  }
+
+  .toast[data-tone="error"] {
+    @apply border-accent/60;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+/* Phone in portrait: screen on top, controller below */
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .screen-area {
+    @apply flex-none px-2 pt-2 pb-0;
+  }
+
+  .screen {
+    width: min(100%, calc(55dvh * 240 / 224));
+  }
+}
+
+/* Phone in landscape: controller wraps the screen like a handheld */
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 40rem) {
+  :root {
+    --toolbar-height: 2.75rem;
+  }
+
+  .app-shell {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .app-header {
+    display: none;
+  }
+
+  .player {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: minmax(0, 1fr) var(--toolbar-height);
+    grid-template-areas:
+      "dpad screen actions"
+      "meta toolbar meta-right";
+  }
+
+  .screen-area {
+    grid-area: screen;
+    @apply p-1;
+  }
+
+  .screen {
+    width: auto;
+    height: calc(100dvh - var(--toolbar-height) - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .toolbar {
+    grid-area: toolbar;
+    @apply px-1;
+  }
+
+  .now-playing {
+    display: none;
+  }
+
+  .toolbar-actions {
+    @apply mx-auto;
+  }
+
+  .touch-controls {
+    display: contents;
+  }
+
+  .dpad {
+    @apply self-center justify-self-center;
+  }
+
+  .action-buttons {
+    @apply self-center justify-self-center;
+  }
+
+  .meta-buttons {
+    grid-area: meta;
+    @apply self-center justify-self-center;
+  }
+}
