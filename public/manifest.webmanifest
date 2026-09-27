@@ -1,0 +1,11 @@
+{
+  "name": "NES Emulator.JS",
+  "short_name": "NES.JS",
+  "description": "Emulador de NES en el navegador, cómodo en computadora y celular.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e0f13",
+  "theme_color": "#0e0f13",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

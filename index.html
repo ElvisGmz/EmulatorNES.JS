@@ -1,38 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<link rel="stylesheet" href="./style.css" />
-	<link rel="shortcut icon" href="./nintendo.svg" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Emulador de NES en el navegador, cómodo en computadora y celular." />
+    <meta name="theme-color" content="#0e0f13" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
     <title>NES Emulator.JS</title>
-  </head>
-  <body onload="nes_load_url('nes-canvas', './Super Mario Bros.nes')">
-    <div class="container">
-      <canvas id="nes-canvas" width="256" height="240" />
-    </div>
-    <div>
-      <!-- <h3>Selecciona tu ROM</h3> -->
-      <!-- <input type="file" name="" id="romFile" accept=".nes"> -->
-    </div>
-    <!-- <script>
-		const rom = document.querySelector('#romFile')
-		rom.onchange = (e) => {
-			var reader = new FileReader()
-			reader.readAsDataURL(event.srcElement.files[0])
-			var me = this
-			reader.onload = function (){
-				var fileContent = reader.result
-				nes_load_url("nes-canvas",  fileContent)
-			}
-		}
-	</script> -->
-    <p>
-      DPad: Arrow keys <br />Start: Return, Select: Tab <br />A Button: A, B
-      Button: S
-    </p>
-  </body>
+    <script>
+      // ES5 on purpose: must run in browsers too old to execute the app bundle
+      (function () {
+        function isIos() {
+          return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        }
 
-  <script type="text/javascript" src="./jsnes.min.js"></script>
-  <script type="text/javascript" src="./nes-embed.js"></script>
+        function showUnsupportedNoticeIfAppDidNotStart() {
+          if (document.documentElement.getAttribute("data-app-ready")) return;
+          var notice = document.getElementById("unsupported-browser");
+          if (!notice) return;
+          if (isIos()) {
+            document.getElementById("unsupported-browser-message").textContent =
+              "Este emulador necesita un navegador más reciente. En iPhone y iPad actualiza iOS a la última versión desde Ajustes › General › Actualización de software.";
+            document.getElementById("unsupported-browser-action").hidden = true;
+          }
+          notice.hidden = false;
+        }
+
+        // Module scripts run before "load", so the app is either ready by then or failed to start
+        window.addEventListener("load", showUnsupportedNoticeIfAppDidNotStart);
+      })();
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <a class="brand" href="/" aria-label="NES Emulator.JS">
+          <img src="/favicon.svg" alt="" class="size-7" />
+          <span class="font-pixel text-xs tracking-wider">NES<span class="text-accent">.JS</span></span>
+        </a>
+
+        <div class="flex items-center gap-2">
+          <button type="button" class="chip-button" data-action="open-help">
+            <span data-icon="keyboard"></span>
+            <span>Controles</span>
+          </button>
+          <button type="button" class="chip-button lg:hidden" data-action="open-library">
+            <span data-icon="library"></span>
+            <span>Juegos</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="player" aria-label="Consola">
+          <div class="screen-area">
+            <div class="screen" data-screen>
+              <canvas data-screen-canvas aria-label="Pantalla del juego"></canvas>
+
+              <div class="screen-overlay" data-overlay="empty">
+                <img src="/favicon.svg" alt="" class="size-14 opacity-90" />
+                <p class="font-pixel text-[0.7rem] leading-relaxed">Elige un juego<br />para empezar</p>
+                <button type="button" class="primary-button" data-action="open-library">
+                  <span data-icon="library"></span>
+                  Ver juegos
+                </button>
+              </div>
+
+              <div class="screen-overlay" data-overlay="loading" hidden>
+                <span class="loader" aria-hidden="true"></span>
+                <p class="font-pixel text-[0.65rem]">Cargando…</p>
+              </div>
+
+              <button type="button" class="screen-overlay cursor-pointer" data-overlay="paused" data-action="toggle-pause" hidden>
+                <span class="font-pixel text-sm">Pausa</span>
+                <span class="text-sm text-muted">Toca para continuar</span>
+              </button>
+
+              <div class="screen-overlay" data-overlay="crashed" hidden>
+                <p class="font-pixel text-[0.65rem] leading-relaxed">El juego se detuvo</p>
+                <button type="button" class="primary-button" data-action="reset">
+                  <span data-icon="reset"></span>
+                  Reiniciar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <p class="now-playing">
+              <span class="text-[0.65rem] uppercase tracking-widest text-muted">Jugando</span>
+              <strong class="truncate" data-now-playing>Ningún juego</strong>
+            </p>
+
+            <div class="toolbar-actions" role="toolbar" aria-label="Opciones del juego">
+              <button type="button" class="icon-button" data-action="toggle-pause" data-requires-game aria-label="Pausar" title="Pausar (P)">
+                <span data-icon="pause"></span>
+              </button>
+              <button type="button" class="icon-button" data-action="reset" data-requires-game aria-label="Reiniciar" title="Reiniciar (R)">
+                <span data-icon="reset"></span>
+              </button>
+              <button type="button" class="icon-button" data-action="save-state" data-requires-game aria-label="Guardar partida" title="Guardar partida (F2)">
+                <span data-icon="save"></span>
+              </button>
+              <button type="button" class="icon-button" data-action="load-state" data-requires-game aria-label="Cargar partida" title="Cargar partida (F4)">
+                <span data-icon="restore"></span>
+              </button>
+              <button type="button" class="icon-button" data-action="toggle-mute" aria-label="Silenciar" title="Silenciar (M)">
+                <span data-icon="volume-on"></span>
+              </button>
+              <button type="button" class="icon-button" data-action="toggle-fullscreen" aria-label="Pantalla completa" title="Pantalla completa (F)">
+                <span data-icon="fullscreen"></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="touch-controls" data-touch-controls aria-hidden="true">
+            <div class="dpad" data-dpad>
+              <span class="dpad-arrow dpad-up" data-nes-button="UP"></span>
+              <span class="dpad-arrow dpad-left" data-nes-button="LEFT"></span>
+              <span class="dpad-center"></span>
+              <span class="dpad-arrow dpad-right" data-nes-button="RIGHT"></span>
+              <span class="dpad-arrow dpad-down" data-nes-button="DOWN"></span>
+            </div>
+
+            <div class="meta-buttons">
+              <span class="meta-button" data-nes-button="SELECT">Select</span>
+              <span class="meta-button" data-nes-button="START">Start</span>
+            </div>
+
+            <div class="action-buttons">
+              <span class="action-button action-b" data-nes-button="B">B</span>
+              <span class="action-button action-a" data-nes-button="A">A</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="library" data-library aria-label="Biblioteca de juegos">
+          <div class="library-header">
+            <h2 class="font-pixel text-xs">Juegos</h2>
+            <button type="button" class="icon-button lg:hidden" data-action="close-library" aria-label="Cerrar">
+              <span data-icon="close"></span>
+            </button>
+          </div>
+
+          <label class="dropzone">
+            <input type="file" accept=".nes" multiple class="sr-only" data-rom-input />
+            <span data-icon="upload" data-icon-class="size-6"></span>
+            <span class="font-semibold">Agregar ROMs (.nes)</span>
+            <span class="text-xs text-muted">Toca para elegir o arrastra los archivos aquí</span>
+          </label>
+
+          <ul class="rom-list" data-rom-list aria-label="Lista de juegos"></ul>
+
+          <p class="px-1 text-xs leading-relaxed text-muted">
+            Las ROMs que agregues se guardan solo en este navegador. Usa únicamente juegos que te pertenezcan o
+            homebrew de distribución libre.
+            <a
+              class="font-medium text-text underline underline-offset-4 hover:text-accent-strong"
+              href="https://github.com/ElvisGmz/EmulatorNES.JS/blob/master/public/roms/CREDITS.md"
+              target="_blank"
+              rel="noopener"
+              >Créditos y licencias</a
+            >
+          </p>
+        </aside>
+
+        <div class="library-backdrop" data-action="close-library"></div>
+      </main>
+    </div>
+
+    <dialog class="help-dialog" data-help-dialog aria-labelledby="help-title">
+      <div class="flex items-center justify-between gap-4">
+        <h2 id="help-title" class="font-pixel text-xs">Controles</h2>
+        <button type="button" class="icon-button" data-action="close-help" aria-label="Cerrar">
+          <span data-icon="close"></span>
+        </button>
+      </div>
+
+      <table class="controls-table">
+        <thead>
+          <tr><th>NES</th><th>Teclado</th><th>Mando</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>D-Pad</td><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>Cruceta / stick</td></tr>
+          <tr><td>A</td><td><kbd>X</kbd> <kbd>A</kbd> <kbd>K</kbd></td><td>B / ○</td></tr>
+          <tr><td>B</td><td><kbd>Z</kbd> <kbd>S</kbd> <kbd>J</kbd></td><td>A / ✕</td></tr>
+          <tr><td>Start</td><td><kbd>Enter</kbd></td><td>Start / Options</td></tr>
+          <tr><td>Select</td><td><kbd>Shift</kbd></td><td>Back / Share</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="mt-5 mb-2 text-sm font-semibold">Atajos</h3>
+      <ul class="shortcut-list">
+        <li><kbd>P</kbd> Pausa</li>
+        <li><kbd>R</kbd> Reiniciar</li>
+        <li><kbd>M</kbd> Silencio</li>
+        <li><kbd>F</kbd> Pantalla completa</li>
+        <li><kbd>F2</kbd> Guardar partida</li>
+        <li><kbd>F4</kbd> Cargar partida</li>
+      </ul>
+
+      <p class="mt-5 text-xs leading-relaxed text-muted">
+        En celular aparecen controles táctiles. Gira el teléfono en horizontal para una pantalla más grande.
+      </p>
+    </dialog>
+
+    <div class="drop-overlay" data-drop-overlay hidden>
+      <span data-icon="upload" data-icon-class="size-10"></span>
+      <p class="font-pixel text-xs">Suelta tus ROMs aquí</p>
+    </div>
+
+    <div class="toasts" data-toasts aria-live="polite"></div>
+
+    <div id="unsupported-browser" role="alert" hidden>
+      <div style="position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: #0e0f13; color: #eceef3; text-align: center; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+        <img src="/favicon.svg" alt="" width="64" height="64" />
+        <h1 style="margin: 20px 0 8px; font-size: 22px">Tu navegador no es compatible</h1>
+        <p id="unsupported-browser-message" style="max-width: 440px; margin: 0 0 24px; color: #9aa1ae; line-height: 1.5">
+          Este emulador necesita un navegador más reciente. Para jugar sin problemas usa la versión más reciente de Google Chrome.
+        </p>
+        <a id="unsupported-browser-action" href="https://www.google.com/chrome/" target="_blank" rel="noopener" style="padding: 12px 22px; border-radius: 999px; background: #e4002b; color: #fff; font-weight: 600; text-decoration: none">
+          Descargar Google Chrome
+        </a>
+      </div>
+    </div>
+  </body>
 </html>
