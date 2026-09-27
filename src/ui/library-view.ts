@@ -21,7 +21,7 @@ function describeEntry(entry: RomEntry): string {
   if (entry.source === "user") {
     return ["Tu ROM", entry.sizeBytes ? formatBytes(entry.sizeBytes) : null].filter(Boolean).join(" · ");
   }
-  return [entry.year, entry.genre].filter(Boolean).join(" · ") || "Incluido";
+  return [entry.year, entry.genre, entry.author].filter(Boolean).join(" · ") || "Incluido";
 }
 
 export class LibraryView {

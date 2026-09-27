@@ -32,15 +32,17 @@ pnpm dev        # http://localhost:5173
 
 ## Adding games to the built-in catalog
 
-1. Copy the ROM into `public/roms/`.
+1. Copy the ROM (and its license) into its own folder inside `public/roms/`.
 2. Add an entry to `public/roms/catalog.json`:
 
 ```json
-{ "id": "my-game", "title": "My Game", "file": "my-game.nes", "year": 2024, "genre": "Homebrew" }
+{ "id": "my-game", "title": "My Game", "file": "my-game/my-game.nes", "year": 2024, "genre": "Homebrew", "author": "Someone" }
 ```
 
-Only add ROMs you are allowed to distribute (e.g. freely licensed homebrew). Players can always load their own ROMs
-from the UI; those never leave their browser.
+3. Credit it in `public/roms/CREDITS.md`.
+
+Only add ROMs you are allowed to distribute (e.g. freely licensed homebrew). Currently bundled: LJ65 and Concentration
+Room by Damian Yerrick (GPL). Players can always load their own ROMs from the UI; those never leave their browser.
 
 ## Project structure
 

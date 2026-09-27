@@ -5,5 +5,21 @@
     "file": "super-mario-bros.nes",
     "year": 1985,
     "genre": "Plataformas"
+  },
+  {
+    "id": "lj65",
+    "title": "LJ65",
+    "file": "lj65/lj65.nes",
+    "year": 2009,
+    "genre": "Puzzle",
+    "author": "Damian Yerrick"
+  },
+  {
+    "id": "concentration-room",
+    "title": "Concentration Room",
+    "file": "concentration-room/croom.nes",
+    "year": 2010,
+    "genre": "Memoria",
+    "author": "Damian Yerrick"
   }
 ]

@@ -53,6 +53,22 @@ describe("RomLibrary", () => {
     expect(data[0]).toBe(0x4e);
   });
 
+  it("keeps subfolders in built-in ROM paths while encoding each segment", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith("catalog.json")
+        ? new Response(JSON.stringify([{ id: "lj65", title: "LJ65", file: "lj65/lj 65.nes", author: "Damian Yerrick" }]))
+        : new Response(createInesRom()),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const library = new RomLibrary({ baseUrl: "/", userRoms: createMemoryCollection() });
+
+    const [entry] = await library.load();
+    await library.readRom("lj65");
+
+    expect(entry).toMatchObject({ author: "Damian Yerrick" });
+    expect(fetchMock).toHaveBeenLastCalledWith("/roms/lj65/lj%2065.nes");
+  });
+
   it("adds user ROMs, lists them first and deduplicates by content", async () => {
     stubFetch();
     const userRoms = createMemoryCollection();

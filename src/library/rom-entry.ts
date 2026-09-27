@@ -6,6 +6,7 @@ export interface RomEntry {
   source: RomSource;
   year?: number;
   genre?: string;
+  author?: string;
   sizeBytes?: number;
 }
 

@@ -9,6 +9,7 @@ interface CatalogItem {
   file: string;
   year?: number;
   genre?: string;
+  author?: string;
 }
 
 function isCatalogItem(value: unknown): value is CatalogItem {
@@ -19,18 +20,20 @@ function isCatalogItem(value: unknown): value is CatalogItem {
 
 export function parseCatalog(json: unknown): BuiltInRomEntry[] {
   if (!Array.isArray(json)) return [];
-  return json.filter(isCatalogItem).map(({ id, title, file, year, genre }) => ({
+  return json.filter(isCatalogItem).map(({ id, title, file, year, genre, author }) => ({
     id,
     title,
     file,
     year,
     genre,
+    author,
     source: "built-in",
   }));
 }
 
 export function resolveRomUrl(baseUrl: string, file: string): string {
-  return `${baseUrl}${ROMS_DIRECTORY}${encodeURIComponent(file)}`;
+  const encodedPath = file.split("/").map(encodeURIComponent).join("/");
+  return `${baseUrl}${ROMS_DIRECTORY}${encodedPath}`;
 }
 
 export async function fetchBuiltInRoms(baseUrl: string): Promise<BuiltInRomEntry[]> {
