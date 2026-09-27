@@ -32,10 +32,16 @@
   }
 
   body {
-    @apply bg-ink font-sans text-text antialiased;
+    @apply bg-ink font-sans text-text antialiased select-none;
     overscroll-behavior: none;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  img,
+  canvas {
+    -webkit-user-drag: none;
   }
 
   button {
