@@ -14,6 +14,29 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
     <title>NES Emulator.JS</title>
+    <script>
+      // ES5 on purpose: must run in browsers too old to execute the app bundle
+      (function () {
+        function isIos() {
+          return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        }
+
+        function showUnsupportedNoticeIfAppDidNotStart() {
+          if (document.documentElement.getAttribute("data-app-ready")) return;
+          var notice = document.getElementById("unsupported-browser");
+          if (!notice) return;
+          if (isIos()) {
+            document.getElementById("unsupported-browser-message").textContent =
+              "Este emulador necesita un navegador más reciente. En iPhone y iPad actualiza iOS a la última versión desde Ajustes › General › Actualización de software.";
+            document.getElementById("unsupported-browser-action").hidden = true;
+          }
+          notice.hidden = false;
+        }
+
+        // Module scripts run before "load", so the app is either ready by then or failed to start
+        window.addEventListener("load", showUnsupportedNoticeIfAppDidNotStart);
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
@@ -189,5 +212,18 @@
     </div>
 
     <div class="toasts" data-toasts aria-live="polite"></div>
+
+    <div id="unsupported-browser" role="alert" hidden>
+      <div style="position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: #0e0f13; color: #eceef3; text-align: center; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+        <img src="/favicon.svg" alt="" width="64" height="64" />
+        <h1 style="margin: 20px 0 8px; font-size: 22px">Tu navegador no es compatible</h1>
+        <p id="unsupported-browser-message" style="max-width: 440px; margin: 0 0 24px; color: #9aa1ae; line-height: 1.5">
+          Este emulador necesita un navegador más reciente. Para jugar sin problemas usa la versión más reciente de Google Chrome.
+        </p>
+        <a id="unsupported-browser-action" href="https://www.google.com/chrome/" target="_blank" rel="noopener" style="padding: 12px 22px; border-radius: 999px; background: #e4002b; color: #fff; font-weight: 600; text-decoration: none">
+          Descargar Google Chrome
+        </a>
+      </div>
+    </div>
   </body>
 </html>
