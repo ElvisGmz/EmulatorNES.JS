@@ -279,7 +279,7 @@ export async function startApp(): Promise<void> {
     steps.hidden = steps.dataset.installSteps !== installPlatform;
   }
 
-  haptics.attachTo(dom.touchControls.querySelectorAll<HTMLElement>("[data-nes-button]"));
+  haptics.attachTo(dom.touchControls.querySelectorAll<HTMLElement>("[data-haptic-zone]"));
   dom.hapticsSetting.hidden = !haptics.isSupported;
   dom.hapticsToggle.checked = haptics.isEnabled;
   dom.hapticsToggle.addEventListener("change", () => {

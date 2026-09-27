@@ -28,7 +28,7 @@ function readHapticsEnvironment(): HapticsEnvironment {
 /**
  * Soft tap feedback for the on-screen controller. Android vibrates on press;
  * iOS only allows haptics from a real tap on a switch, so an invisible switch
- * is layered over each button and the tick plays when the tap completes.
+ * is layered over each control zone and the tick plays when the tap completes.
  */
 export class Haptics {
   readonly strategy: HapticsStrategy;
@@ -57,10 +57,10 @@ export class Haptics {
     if (this.enabled && this.strategy === "vibration") navigator.vibrate(VIBRATION_PULSE_MS);
   };
 
-  attachTo(buttons: Iterable<HTMLElement>): void {
+  attachTo(zones: Iterable<HTMLElement>): void {
     if (this.strategy !== "ios-switch") return;
 
-    for (const button of buttons) {
+    for (const zone of zones) {
       const overlay = document.createElement("input");
       overlay.type = "checkbox";
       overlay.setAttribute("switch", "");
@@ -69,7 +69,7 @@ export class Haptics {
       overlay.className = "haptic-switch";
       overlay.classList.toggle("haptic-switch-off", !this.enabled);
 
-      button.append(overlay);
+      zone.append(overlay);
       this.switchOverlays.push(overlay);
     }
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NesButton } from "../emulator/nes-button";
 import { readGamepadButtons } from "./gamepad-input";
 import { resolveKeyButton } from "./keyboard-input";
-import { resolveDpadButtons } from "./touch-input";
+import { resolveActionButtons, resolveDpadButtons, type ActionButtonArea } from "./touch-input";
 
 describe("resolveKeyButton", () => {
   it.each([
@@ -56,5 +56,34 @@ describe("readGamepadButtons", () => {
   it("reads the left stick as a D-pad", () => {
     expect(readGamepadButtons(createGamepad([], [-0.9, 0.7]))).toEqual(new Set([NesButton.LEFT, NesButton.DOWN]));
     expect(readGamepadButtons(createGamepad([], [0.2, -0.3]))).toEqual(new Set());
+  });
+});
+
+describe("resolveActionButtons", () => {
+  // B lower-left and A upper-right, almost touching, like the on-screen layout
+  const areas: ActionButtonArea[] = [
+    { button: NesButton.B, centerX: 40, centerY: 70, radius: 40 },
+    { button: NesButton.A, centerX: 122, centerY: 40, radius: 40 },
+  ];
+  const seam = { x: (40 + 122) / 2, y: (70 + 40) / 2 };
+
+  it("presses the button under the thumb", () => {
+    expect(resolveActionButtons(40, 70, areas)).toEqual([NesButton.B]);
+    expect(resolveActionButtons(125, 35, areas)).toEqual([NesButton.A]);
+  });
+
+  it("presses A and B together when the thumb rests on the seam", () => {
+    expect(new Set(resolveActionButtons(seam.x, seam.y, areas))).toEqual(new Set([NesButton.A, NesButton.B]));
+  });
+
+  it("switches from B to both to A while sliding across", () => {
+    const path = [0, 0.3, 0.5, 0.7, 1].map((progress) =>
+      resolveActionButtons(40 + (122 - 40) * progress, 70 + (40 - 70) * progress, areas).length,
+    );
+    expect(path).toEqual([1, 1, 2, 1, 1]);
+  });
+
+  it("ignores touches far away from both buttons", () => {
+    expect(resolveActionButtons(300, 300, areas)).toEqual([]);
   });
 });
