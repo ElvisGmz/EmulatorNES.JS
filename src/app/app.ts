@@ -1,3 +1,4 @@
+import { isIosDevice } from "../compat/browser-support";
 import { NesEmulator, type EmulatorStatus } from "../emulator/nes-emulator";
 import { bindGamepadInput } from "../input/gamepad-input";
 import { InputHub } from "../input/input-hub";
@@ -7,7 +8,8 @@ import { RomLibrary, RomValidationError } from "../library/rom-library";
 import { describeRomLoadError } from "../library/rom-validator";
 import { SnapshotStore } from "../library/snapshot-store";
 import { bindFileDrop } from "../ui/file-drop";
-import { isFullscreen, isFullscreenSupported, toggleFullscreen } from "../ui/fullscreen";
+import { getFullscreenMode, isFullscreen, onFullscreenChange, toggleFullscreen } from "../ui/fullscreen";
+import { Haptics } from "../ui/haptics";
 import { hydrateIcons, setIcon } from "../ui/icons";
 import { LibraryView } from "../ui/library-view";
 import { showScreenOverlay, type ScreenOverlay } from "../ui/screen-overlay";
@@ -18,6 +20,7 @@ import { queryDomRefs } from "./dom-refs";
 import { bindKeyboardShortcuts } from "./shortcuts";
 
 const MUTED_STORAGE_KEY = "emulator-nes-js:muted";
+const HAPTICS_STORAGE_KEY = "emulator-nes-js:haptics";
 const DESKTOP_LAYOUT_QUERY = "(min-width: 64rem)";
 
 const STATUS_OVERLAY: Record<EmulatorStatus, ScreenOverlay> = {
@@ -35,6 +38,8 @@ export async function startApp(): Promise<void> {
   const library = new RomLibrary({ baseUrl: import.meta.env.BASE_URL });
   const snapshots = new SnapshotStore();
   const desktopLayout = window.matchMedia(DESKTOP_LAYOUT_QUERY);
+  const fullscreenMode = getFullscreenMode();
+  const haptics = new Haptics({ enabled: readLocalFlag(HAPTICS_STORAGE_KEY, true) });
 
   let activeRomId: string | null = null;
   let isLoadingRom = false;
@@ -218,17 +223,25 @@ export async function startApp(): Promise<void> {
       renderMuted();
     },
     "toggle-fullscreen": () => {
-      if (!isFullscreenSupported()) return;
+      if (fullscreenMode === "install") {
+        openModal(dom.installDialog);
+        return;
+      }
       toggleFullscreen(dom.screen).catch(() => toaster.show("No se pudo activar la pantalla completa.", "error"));
     },
     "open-library": openLibrary,
     "close-library": closeLibrary,
-    "open-help": () => {
-      pauseAutomatically();
-      dom.helpDialog.showModal();
-    },
+    "open-help": () => openModal(dom.helpDialog),
     "close-help": () => dom.helpDialog.close(),
+    "close-install": () => dom.installDialog.close(),
   };
+
+  function openModal(dialog: HTMLDialogElement): void {
+    pauseAutomatically();
+    dialog.showModal();
+  }
+
+  const isModalOpen = () => dom.helpDialog.open || dom.installDialog.open;
 
   const runAction = (action: AppAction) => {
     if (isGameAction(action) && !emulator.hasGame) return;
@@ -252,12 +265,27 @@ export async function startApp(): Promise<void> {
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pauseAutomatically();
-    else if (!dom.library.hasAttribute("data-open") && !dom.helpDialog.open) resumeIfPausedAutomatically();
+    else if (!dom.library.hasAttribute("data-open") && !isModalOpen()) resumeIfPausedAutomatically();
   });
 
-  dom.helpDialog.addEventListener("close", resumeIfPausedAutomatically);
-  document.addEventListener("fullscreenchange", renderFullscreen);
-  dom.fullscreenButton.hidden = !isFullscreenSupported();
+  for (const dialog of [dom.helpDialog, dom.installDialog]) {
+    dialog.addEventListener("close", resumeIfPausedAutomatically);
+  }
+
+  onFullscreenChange(renderFullscreen);
+  dom.fullscreenButton.hidden = fullscreenMode === "standalone";
+  const installPlatform = isIosDevice(navigator) ? "ios" : "other";
+  for (const steps of dom.installDialog.querySelectorAll<HTMLElement>("[data-install-steps]")) {
+    steps.hidden = steps.dataset.installSteps !== installPlatform;
+  }
+
+  haptics.attachTo(dom.touchControls.querySelectorAll<HTMLElement>("[data-nes-button]"));
+  dom.hapticsSetting.hidden = !haptics.isSupported;
+  dom.hapticsToggle.checked = haptics.isEnabled;
+  dom.hapticsToggle.addEventListener("change", () => {
+    haptics.setEnabled(dom.hapticsToggle.checked);
+    writeLocalFlag(HAPTICS_STORAGE_KEY, dom.hapticsToggle.checked);
+  });
 
   dom.romInput.addEventListener("change", () => {
     const files = [...(dom.romInput.files ?? [])];
@@ -268,8 +296,8 @@ export async function startApp(): Promise<void> {
 
   bindFileDrop(dom.dropOverlay, (files) => void addRomFiles(files));
   bindKeyboardShortcuts(runAction);
-  bindKeyboardInput(inputHub, { isEnabled: () => emulator.status === "running" && !dom.helpDialog.open });
-  bindTouchInput(dom.touchControls, inputHub);
+  bindKeyboardInput(inputHub, { isEnabled: () => emulator.status === "running" && !isModalOpen() });
+  bindTouchInput(dom.touchControls, inputHub, { onPress: haptics.pulse });
   bindGamepadInput(inputHub, {
     onConnectionChange: (connectedCount) => {
       if (connectedCount > 0) toaster.show("Mando conectado 🎮");

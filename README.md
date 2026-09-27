@@ -28,6 +28,10 @@ pnpm dev        # http://localhost:5173
 - ROM library: built-in catalog plus your own `.nes` files (file picker or drag & drop), persisted in IndexedDB.
 - Save/load state per game, pause, reset, mute and fullscreen.
 - Input from keyboard, touch (multi-touch, sliding between buttons, 8-way D-pad) and standard gamepads.
+- Soft haptic feedback on the touch controller: Vibration API on Android, native `switch` haptics on iOS 18+ (fires
+  when a tap completes, since iOS exposes no vibration API). Can be turned off from the Controls dialog.
+- Installable as an app (PWA). On iPhone, where Safari has no Fullscreen API, the fullscreen button explains how to add
+  it to the home screen to play without browser bars.
 - Auto-pause when the tab is hidden or the library/help is open.
 
 ## Adding games to the built-in catalog

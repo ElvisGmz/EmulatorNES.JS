@@ -4,7 +4,6 @@ import type { InputHub } from "./input-hub";
 const DPAD_DEADZONE_RATIO = 0.2;
 // Diagonals only trigger within ±15° of 45°, so cardinal directions are easier to hold
 const DPAD_AXIS_ACTIVATION = Math.sin(Math.PI / 6);
-const HAPTIC_PULSE_MS = 8;
 
 export function resolveDpadButtons(offsetX: number, offsetY: number, radius: number): NesButton[] {
   const distance = Math.hypot(offsetX, offsetY);
@@ -32,7 +31,11 @@ interface TrackedPointer {
  * Handles every on-screen control inside `root`. Moves are tracked on window,
  * so fingers can slide across the D-pad or between A and B without lifting.
  */
-export function bindTouchInput(root: HTMLElement, hub: InputHub): () => void {
+interface TouchInputOptions {
+  onPress?: () => void;
+}
+
+export function bindTouchInput(root: HTMLElement, hub: InputHub, { onPress }: TouchInputOptions = {}): () => void {
   const dpad = root.querySelector<HTMLElement>("[data-dpad]");
   const pointers = new Map<number, TrackedPointer>();
   let pressedButtons = new Set<NesButton>();
@@ -60,7 +63,7 @@ export function bindTouchInput(root: HTMLElement, hub: InputHub): () => void {
     hub.syncSource("touch", nextButtons);
     renderPressedState(root, nextButtons);
 
-    if (hasNewPress) navigator.vibrate?.(HAPTIC_PULSE_MS);
+    if (hasNewPress) onPress?.();
   };
 
   const handlePointerDown = (event: PointerEvent) => {

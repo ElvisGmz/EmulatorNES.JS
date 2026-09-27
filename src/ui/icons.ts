@@ -13,6 +13,7 @@ const ICON_PATHS = {
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/>',
   trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  share: '<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>',
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

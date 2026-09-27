@@ -8,6 +8,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NES.JS" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -185,6 +187,14 @@
         </button>
       </div>
 
+      <label class="setting-row" data-haptics-setting hidden>
+        <span class="flex flex-col">
+          <span class="text-sm font-semibold">Vibración</span>
+          <span class="text-xs text-muted">Un toque suave al presionar los botones en pantalla</span>
+        </span>
+        <input type="checkbox" switch class="setting-switch" data-haptics-toggle />
+      </label>
+
       <table class="controls-table">
         <thead>
           <tr><th>NES</th><th>Teclado</th><th>Mando</th></tr>
@@ -211,6 +221,32 @@
       <p class="mt-5 text-xs leading-relaxed text-muted">
         En celular aparecen controles táctiles. Gira el teléfono en horizontal para una pantalla más grande.
       </p>
+    </dialog>
+
+    <dialog class="help-dialog" data-install-dialog aria-labelledby="install-title">
+      <div class="flex items-center justify-between gap-4">
+        <h2 id="install-title" class="font-pixel text-xs">Pantalla completa</h2>
+        <button type="button" class="icon-button" data-action="close-install" aria-label="Cerrar">
+          <span data-icon="close"></span>
+        </button>
+      </div>
+
+      <p class="mt-4 text-sm leading-relaxed text-muted" data-install-intro>
+        Este navegador no permite pantalla completa en páginas web, pero puedes instalar NES.JS como app y se abrirá
+        sin barras del navegador.
+      </p>
+
+      <ol class="install-steps" data-install-steps="ios" hidden>
+        <li><span class="install-step-number">1</span><span>Toca <strong>Compartir</strong> <span data-icon="share" data-icon-class="inline size-4 align-text-bottom"></span> en la barra de Safari.</span></li>
+        <li><span class="install-step-number">2</span><span>Elige <strong>Agregar a pantalla de inicio</strong>.</span></li>
+        <li><span class="install-step-number">3</span><span>Abre <strong>NES.JS</strong> desde tu pantalla de inicio.</span></li>
+      </ol>
+
+      <ol class="install-steps" data-install-steps="other" hidden>
+        <li><span class="install-step-number">1</span><span>Abre el menú del navegador.</span></li>
+        <li><span class="install-step-number">2</span><span>Elige <strong>Instalar app</strong> o <strong>Agregar a pantalla de inicio</strong>.</span></li>
+        <li><span class="install-step-number">3</span><span>Abre <strong>NES.JS</strong> desde tu pantalla de inicio.</span></li>
+      </ol>
     </dialog>
 
     <div class="drop-overlay" data-drop-overlay hidden>

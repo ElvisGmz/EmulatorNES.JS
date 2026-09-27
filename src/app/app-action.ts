@@ -9,6 +9,7 @@ export const APP_ACTIONS = [
   "close-library",
   "open-help",
   "close-help",
+  "close-install",
 ] as const;
 
 export type AppAction = (typeof APP_ACTIONS)[number];
