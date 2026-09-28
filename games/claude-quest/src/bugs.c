@@ -43,17 +43,30 @@ void bugs_reset(void) {
   bug_count = 0;
 }
 
+/** Adds a bug, reusing the slot of a defeated one when possible (bosses summon minions). */
 void bug_add(u8 x, u8 y, u8 facing_left, u8 flying) {
-  if (bug_count == MAX_BUGS) return;
-  bug_x[bug_count] = x;
-  bug_y[bug_count] = y;
-  bug_base_y[bug_count] = y;
-  bug_flying[bug_count] = flying;
-  bug_phase[bug_count] = bug_count << 3;
-  bug_left[bug_count] = facing_left;
-  bug_subpixel[bug_count] = 0;
-  bug_state[bug_count] = BUG_WALKING;
-  ++bug_count;
+  u8 slot;
+  for (slot = 0; slot < bug_count && bug_state[slot] != BUG_GONE; ++slot) {
+  }
+  if (slot == MAX_BUGS) return;
+  if (slot == bug_count) ++bug_count;
+
+  bug_x[slot] = x;
+  bug_y[slot] = y;
+  bug_base_y[slot] = y;
+  bug_flying[slot] = flying;
+  bug_phase[slot] = slot << 3;
+  bug_left[slot] = facing_left;
+  bug_subpixel[slot] = 0;
+  bug_state[slot] = BUG_WALKING;
+}
+
+u8 bugs_alive(void) {
+  u8 alive = 0;
+  for (index = 0; index < bug_count; ++index) {
+    if (bug_state[index] == BUG_WALKING) ++alive;
+  }
+  return alive;
 }
 
 static u8 can_step_to(u8 next_x) {

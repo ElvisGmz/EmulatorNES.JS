@@ -58,6 +58,7 @@ void vram_queue_bytes(u16 address, const u8 *data, u8 length);
 void oam_begin(void);
 void oam_sprite(u8 x, u8 y, u8 tile, u8 attributes);
 void oam_meta_2x2(u8 x, u8 y, u8 first_tile, u8 attributes);
+void oam_meta_4x4(u8 x, u8 y, u8 first_tile, u8 attributes, u16 visible_tiles);
 void oam_end(void);
 
 u8 pad_poll(void);

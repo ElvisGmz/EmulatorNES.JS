@@ -63,6 +63,14 @@ export class PatternTable {
     this.bytes.set(encodeTile(rows, this.palette), index * BYTES_PER_TILE);
   }
 
+  /** Places a drawing of any size in tiles, keeping the 16-tiles-per-row metasprite layout. */
+  placeBlock(firstIndex, rows) {
+    const tilesWide = rows[0].length / 8;
+    splitIntoTiles(rows).forEach((tile, index) => {
+      this.place(firstIndex + (index % tilesWide) + Math.floor(index / tilesWide) * 16, tile);
+    });
+  }
+
   /** Places a 16x16 drawing so its tiles sit at n, n+1, n+16, n+17 (the metasprite layout). */
   placeMeta(firstIndex, rows) {
     const [topLeft, topRight, bottomLeft, bottomRight] = splitIntoTiles(rows);

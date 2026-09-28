@@ -1,6 +1,7 @@
 import { CHR_BANK_SIZE, PatternTable } from "../tools/chr.mjs";
 import { FONT_GLYPHS, glyphToTile } from "./font.mjs";
 import { placeLogo, renderLogo } from "./logo.mjs";
+import * as bosses from "./bosses.mjs";
 import * as sprites from "./sprites.mjs";
 import * as tiles from "./tiles.mjs";
 
@@ -41,6 +42,10 @@ export const BACKGROUND_TILES = {
   CLOUD_RIGHT: 0x0c,
   MOON: 0x0e,
   LIFE_ICON: 0x10,
+  HEALTH_FULL: 0x11,
+  HEALTH_HALF: 0x12,
+  HEALTH_EMPTY: 0x13,
+  AMMO_ICON: 0x18,
   TOKEN: 0x60,
   SPRING: 0x62,
   SPIKES: 0x64,
@@ -60,6 +65,14 @@ export const SPRITE_TILES = {
   SPARKLE: 0x23,
   FLY_WINGS_DOWN: 0x24,
   PLATFORM: 0x26,
+  BULLET: 0x2a,
+  SHOCKWAVE: 0x2b,
+  THROWN_STAR: 0x2c,
+  KING_CROWN: 0x2d,
+  KING_BUG_1: 0x40,
+  KING_BUG_2: 0x44,
+  SEGFAULT_1: 0x48,
+  SEGFAULT_2: 0x4c,
 };
 
 function placeRow(table, firstIndex, rows) {
@@ -82,6 +95,10 @@ function buildBackgroundTable() {
   placeRow(table, t.CLOUD_RIGHT, tiles.CLOUD_RIGHT);
   table.placeMeta(t.MOON, tiles.MOON);
   table.place(t.LIFE_ICON, tiles.LIFE_ICON);
+  table.place(t.HEALTH_FULL, tiles.HEALTH_FULL);
+  table.place(t.HEALTH_HALF, tiles.HEALTH_HALF);
+  table.place(t.HEALTH_EMPTY, tiles.HEALTH_EMPTY);
+  table.place(t.AMMO_ICON, tiles.AMMO_ICON);
   table.placeMeta(t.TOKEN, tiles.TOKEN);
   table.placeMeta(t.SPRING, tiles.SPRING);
   table.placeMeta(t.SPIKES, tiles.SPIKES);
@@ -113,10 +130,37 @@ function buildSpriteTable() {
   // Moving clouds are 32x8 sprites: the rounded ends of the background cloud art
   placeRow(table, t.PLATFORM, tiles.CLOUD_LEFT);
   placeRow(table, t.PLATFORM + 2, tiles.CLOUD_RIGHT);
+  table.place(t.BULLET, bosses.BULLET);
+  table.place(t.SHOCKWAVE, bosses.SHOCKWAVE);
+  table.place(t.THROWN_STAR, bosses.THROWN_STAR);
+  placeRow(table, t.KING_CROWN, bosses.KING_CROWN);
+  table.placeBlock(t.KING_BUG_1, bosses.KING_BUG_1);
+  table.placeBlock(t.KING_BUG_2, bosses.KING_BUG_2);
+  table.placeBlock(t.SEGFAULT_1, bosses.SEGFAULT_1);
+  table.placeBlock(t.SEGFAULT_2, bosses.SEGFAULT_2);
   sprites.TOKEN_FRAMES.forEach((frame, index) => table.place(t.TOKEN + index, frame));
   table.place(t.SPARKLE, sprites.SPARKLE);
   return table;
 }
+
+/** One bit per non-empty 8x8 tile (row * 4 + column) of a 32x32 drawing. */
+function visibleTileMask(rows) {
+  let mask = 0;
+  for (let tileRow = 0; tileRow < 4; tileRow++) {
+    for (let tileColumn = 0; tileColumn < 4; tileColumn++) {
+      const tile = rows.slice(tileRow * 8, tileRow * 8 + 8).map((row) => row.slice(tileColumn * 8, tileColumn * 8 + 8));
+      if (tile.some((row) => /[abc]/.test(row))) mask |= 1 << (tileRow * 4 + tileColumn);
+    }
+  }
+  return mask;
+}
+
+const BOSS_FRAMES = {
+  KING_BUG_1: bosses.KING_BUG_1,
+  KING_BUG_2: bosses.KING_BUG_2,
+  SEGFAULT_1: bosses.SEGFAULT_1,
+  SEGFAULT_2: bosses.SEGFAULT_2,
+};
 
 function toHex(value) {
   return `0x${value.toString(16).padStart(2, "0").toUpperCase()}`;
@@ -153,6 +197,10 @@ export function buildAssets() {
 ${toDefines("BG_", BACKGROUND_TILES)}
 
 ${toDefines("SPR_", SPRITE_TILES)}
+
+${Object.entries(BOSS_FRAMES)
+  .map(([name, rows]) => `#define MASK_${name} 0x${visibleTileMask(rows).toString(16).toUpperCase()}`)
+  .join("\n")}
 
 #define SKY_TWINKLE_COUNT ${SKY_TWINKLE_COLORS.length}
 #define LOGO_WIDTH ${logo.width}

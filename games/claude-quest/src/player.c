@@ -120,7 +120,31 @@ static void move_horizontally(void) {
   }
 }
 
+/** Standing on a cloud (fixed or moving) rather than on solid ground, so Down can drop through. */
+static u8 standing_on_cloud(void) {
+  u8 left_cell;
+  u8 right_cell;
+  if (!player_on_ground) return 0;
+  if (player_platform != NO_PLATFORM) return 1;
+  left_cell = cell_at(x + HITBOX_LEFT, y + SPRITE_SIZE);
+  right_cell = cell_at(x + HITBOX_RIGHT, y + SPRITE_SIZE);
+  if (is_solid(x + HITBOX_LEFT, y + SPRITE_SIZE) || is_solid(x + HITBOX_RIGHT, y + SPRITE_SIZE)) return 0;
+  return left_cell == CELL_CLOUD || right_cell == CELL_CLOUD;
+}
+
+static void drop_through_cloud(void) {
+  cloud_drop = CLOUD_DROP_FRAMES;
+  player_on_ground = 0;
+  jump_buffer = 0;
+  coyote_frames = 0;
+}
+
 static void handle_jump(void) {
+  if ((pad_pressed & PAD_DOWN) && standing_on_cloud()) {
+    drop_through_cloud();
+    return;
+  }
+
   if (pad_pressed & PAD_A) jump_buffer = JUMP_BUFFER_FRAMES;
   else if (jump_buffer) --jump_buffer;
 
@@ -129,15 +153,14 @@ static void handle_jump(void) {
 
   if (!jump_buffer || !coyote_frames) return;
 
+  if ((pad_held & PAD_DOWN) && standing_on_cloud()) {
+    drop_through_cloud();
+    return;
+  }
   jump_buffer = 0;
   coyote_frames = 0;
-  if ((pad_held & PAD_DOWN) && player_on_ground &&
-      (player_platform != NO_PLATFORM || cell_at(x + 8, y + SPRITE_SIZE) == CELL_CLOUD)) {
-    cloud_drop = CLOUD_DROP_FRAMES;
-  } else {
-    player_velocity_y = JUMP_VELOCITY;
-    sfx_play(SFX_JUMP);
-  }
+  player_velocity_y = JUMP_VELOCITY;
+  sfx_play(SFX_JUMP);
   player_on_ground = 0;
 }
 

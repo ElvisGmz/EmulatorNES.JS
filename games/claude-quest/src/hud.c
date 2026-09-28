@@ -8,6 +8,11 @@
 #define LIVES_COLUMN 16
 #define LEVEL_COLUMN 23
 #define LEVEL_DIGIT_COLUMN 29
+#define AMMO_COLUMN 23
+#define BOSS_ROW 3
+#define BOSS_NAME_COLUMN 2
+#define HEALTH_BAR_END_COLUMN 30
+#define HEALTH_PER_TILE 2
 #define MAX_LIVES 9
 
 u16 score;
@@ -59,9 +64,37 @@ static void format_status(void) {
   line[2] = '0' + lives;
 }
 
+static void format_ammo(void) {
+  line[0] = BG_AMMO_ICON;
+  line[1] = '*';
+  line[2] = '0' + star_ammo;
+}
+
+static u8 health_bar_tiles(void) {
+  return (boss_max_health + HEALTH_PER_TILE - 1) / HEALTH_PER_TILE;
+}
+
+static void format_health_bar(void) {
+  u8 remaining = boss_health;
+  for (length = 0; length < health_bar_tiles(); ++length) {
+    if (remaining >= HEALTH_PER_TILE) {
+      line[length] = BG_HEALTH_FULL;
+      remaining -= HEALTH_PER_TILE;
+    } else {
+      line[length] = remaining ? BG_HEALTH_HALF : BG_HEALTH_EMPTY;
+      remaining = 0;
+    }
+  }
+}
+
+static u8 is_boss_level(void) {
+  return level_boss(current_level) != BOSS_NONE;
+}
+
 void hud_draw(void) {
   text_write(SCORE_COLUMN, HUD_ROW, "SCORE");
-  text_write(LEVEL_COLUMN, HUD_ROW, "LEVEL");
+  if (is_boss_level()) text_write(BOSS_NAME_COLUMN, BOSS_ROW, boss_name());
+  else text_write(LEVEL_COLUMN, HUD_ROW, "LEVEL");
   hud_refresh_now();
 }
 
@@ -75,12 +108,23 @@ void hud_refresh_now(void) {
   vram_address(NAMETABLE_ADDR(LIVES_COLUMN, HUD_ROW));
   vram_write(line, 3);
 
+  if (is_boss_level()) {
+    format_ammo();
+    vram_address(NAMETABLE_ADDR(AMMO_COLUMN, HUD_ROW));
+    vram_write(line, 3);
+    format_health_bar();
+    vram_address(NAMETABLE_ADDR(HEALTH_BAR_END_COLUMN - health_bar_tiles(), BOSS_ROW));
+    vram_write(line, health_bar_tiles());
+    return;
+  }
+
+  length = level_number(current_level);
   vram_address(NAMETABLE_ADDR(LEVEL_DIGIT_COLUMN, HUD_ROW));
-  if (current_level >= 9) {
+  if (length >= 10) {
     PPU_DATA = '1';
-    PPU_DATA = '0' + current_level - 9;
+    PPU_DATA = '0' + length - 10;
   } else {
-    PPU_DATA = '1' + current_level;
+    PPU_DATA = '0' + length;
     PPU_DATA = ' ';
   }
 }
@@ -91,6 +135,17 @@ void hud_refresh(void) {
   vram_queue_bytes(NAMETABLE_ADDR(SCORE_DIGITS_COLUMN, HUD_ROW), digits, 6);
   format_status();
   vram_queue_bytes(NAMETABLE_ADDR(LIVES_COLUMN, HUD_ROW), line, 3);
+  if (is_boss_level()) hud_refresh_ammo();
+}
+
+void hud_refresh_ammo(void) {
+  format_ammo();
+  vram_queue_bytes(NAMETABLE_ADDR(AMMO_COLUMN, HUD_ROW), line, 3);
+}
+
+void hud_refresh_boss(void) {
+  format_health_bar();
+  vram_queue_bytes(NAMETABLE_ADDR(HEALTH_BAR_END_COLUMN - health_bar_tiles(), BOSS_ROW), line, health_bar_tiles());
 }
 
 void score_reset(void) {

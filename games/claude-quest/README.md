@@ -6,12 +6,18 @@ An original NES platformer starring Claude, written in C and 6502 assembly and b
 Collect every star token in the level while stomping (or dodging) the bugs. Ten levels: five gentle ones and five hard
 ones with springs, ice spikes, flying bugs and moving clouds, each half with its own music.
 
+Each half ends with a boss fight with its own theme: **King Bug** charges, leaps and sends shockwaves along the
+ground; **The Segfault** fires spreads of orbs, teleports and dives. In boss arenas the tokens are star ammo (up to 5)
+that grows back a few seconds after you grab it: throw stars with B. Every attack is telegraphed by a flash, and a
+stunned boss can be stomped for double damage. Fall and you get "YOU DIED": the boss comes back at full health. On
+game over, Start continues from the same level.
+
 | Button | Action |
 | --- | --- |
 | D-pad | Move |
 | A | Jump (hold for a higher jump, also on springs) |
-| B | Run |
-| Down + A | Drop through a cloud |
+| B | Run; in boss fights, throw a star (Up + B throws upward, Up + a direction diagonally) |
+| Down (or Down + A) | Drop through a cloud or a moving cloud |
 | Start | Start / pause |
 
 ## Build
@@ -33,12 +39,14 @@ games/claude-quest/
 │   ├── crt0.s        # iNES header, reset and NMI (OAM DMA, palette and VRAM queue)
 │   ├── nes.c/h       # PPU, sprites and controller helpers
 │   ├── audio.c/h     # sound driver: 4 music channels + 2 sound effect channels
-│   ├── level.c       # the 10 levels, drawing and collision map
+│   ├── level.c       # the 10 levels and 2 boss arenas, drawing and collision map
 │   ├── player.c      # physics: acceleration, variable jump, coyote time, jump buffer
 │   ├── bugs.c        # walking and flying enemies
 │   ├── platforms.c   # moving clouds that carry Claude
-│   ├── tokens.c      # collectible stars (background tiles) and the pickup sparkle
-│   ├── hud.c         # score, lives and text
+│   ├── tokens.c      # collectible stars (background tiles), star ammo in boss arenas
+│   ├── boss.c        # King Bug and The Segfault: state machines, projectiles, damage
+│   ├── shots.c       # stars thrown by Claude
+│   ├── hud.c         # score, lives, ammo, boss health bar and text
 │   ├── screens.c     # title and ending screens
 │   └── main.c        # game state machine
 ├── tools/            # cc65 runner, CHR encoder, music compiler, jsnes playtest harness
@@ -58,6 +66,7 @@ Levels live in `src/level.c` as 13 rows of 16 characters:
 | `#` | Ground |
 | `=` | Cloud (one-way platform) |
 | `P` | Player start |
+| `X` | Boss (its bottom-right cell; arenas only) |
 | `o` | Star token |
 | `b` / `d` | Bug walking left / right |
 | `f` | Flying bug |

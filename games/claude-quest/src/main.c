@@ -10,10 +10,12 @@
 #define STATE_CLEAR 5
 #define STATE_GAME_OVER 6
 #define STATE_WIN 7
+#define STATE_DIED 8
 
 #define INTRO_FRAMES 100
 #define CLEAR_FRAMES 150
 #define GAME_OVER_PROMPT_FRAMES 90
+#define DIED_FRAMES 150
 #define TWINKLE_FRAME_MASK 7
 #define SKY_TWINKLE_PALETTE_INDEX 15
 
@@ -21,12 +23,17 @@ static u8 state;
 static u16 state_timer;
 static char level_title[] = "LEVEL 10";
 
+static u8 is_boss_level(void) {
+  return level_boss(current_level) != BOSS_NONE;
+}
+
 static u8 level_song(void) {
+  if (is_boss_level()) return SONG_BOSS;
   return current_level >= FIRST_HARD_LEVEL ? SONG_DANGER : SONG_LEVEL;
 }
 
 static void format_level_title(void) {
-  u8 number = current_level + 1;
+  u8 number = level_number(current_level);
   if (number >= 10) {
     level_title[6] = '1';
     level_title[7] = '0' + number - 10;
@@ -65,8 +72,15 @@ static void enter_level(void) {
   player_spawn();
   // Invincibility is only a grace period after losing a life, not at the start of a level
   player_invincible = 0;
-  format_level_title();
-  text_queue_centered(MESSAGE_ROW, level_title);
+  star_ammo = 0;
+  shots_reset();
+  tokens_set_ammo_mode(is_boss_level());
+  if (is_boss_level()) {
+    text_queue_centered(MESSAGE_ROW, "BOSS FIGHT");
+  } else {
+    format_level_title();
+    text_queue_centered(MESSAGE_ROW, level_title);
+  }
   text_queue_centered(MESSAGE_ROW + 1, level_name(current_level));
   music_play(level_song());
   state = STATE_INTRO;
@@ -115,18 +129,31 @@ static void update_playing(void) {
   player_update();
   bugs_update();
   tokens_update();
+  if (is_boss_level()) {
+    shots_update();
+    boss_update();
+  }
 
-  if (player_fell_off() || bugs_check_player() == 2 || (!player_invincible && player_touching_spikes())) {
+  if (player_fell_off() || bugs_check_player() == 2 || (!player_invincible && player_touching_spikes()) ||
+      (is_boss_level() && boss_hurts_player())) {
     start_hurt();
     return;
   }
 
-  if (tokens_left == 0) {
-    music_play(SONG_CLEAR);
+  if (is_boss_level()) {
+    if (!boss_defeated()) return;
+    // Minions fall with their king
+    bugs_reset();
+    shots_reset();
+    score_add(SCORE_BOSS);
+    text_queue_centered(MESSAGE_ROW, "GREAT ENEMY FELLED");
+  } else {
+    if (tokens_left) return;
     text_queue_centered(MESSAGE_ROW, "LEVEL CLEAR!");
-    state = STATE_CLEAR;
-    state_timer = CLEAR_FRAMES;
   }
+  music_play(SONG_CLEAR);
+  state = STATE_CLEAR;
+  state_timer = CLEAR_FRAMES;
 }
 
 static void update_paused(void) {
@@ -149,6 +176,15 @@ static void update_hurt(void) {
     return;
   }
 
+  // Bosses start over, with full health, every time Claude falls
+  if (is_boss_level()) {
+    music_play(SONG_GAME_OVER);
+    text_queue_centered(MESSAGE_ROW, "YOU DIED");
+    state = STATE_DIED;
+    state_timer = DIED_FRAMES;
+    return;
+  }
+
   player_spawn();
   music_play(level_song());
   state = STATE_PLAYING;
@@ -165,10 +201,19 @@ static void update_clear(void) {
   enter_level();
 }
 
+static void update_died(void) {
+  if (--state_timer == 0) enter_level();
+}
+
+/** Start continues from the same level with a fresh score and lives. */
 static void update_game_over(void) {
   ++state_timer;
   if (state_timer == GAME_OVER_PROMPT_FRAMES) text_queue_centered(MESSAGE_ROW + 1, "PRESS START");
-  if (state_timer > GAME_OVER_PROMPT_FRAMES && (pad_pressed & PAD_START)) enter_title();
+  if (state_timer > GAME_OVER_PROMPT_FRAMES && (pad_pressed & PAD_START)) {
+    sfx_play(SFX_START);
+    score_reset();
+    enter_level();
+  }
 }
 
 static void draw_world(void) {
@@ -177,9 +222,14 @@ static void draw_world(void) {
   // Claude is drawn first so it never flickers; enemies and tokens alternate order
   // every frame so the 8-sprites-per-line limit spreads the flicker between them
   if (state == STATE_HURT) player_draw_hurt();
-  else if (state != STATE_GAME_OVER) player_draw();
+  else if (state != STATE_GAME_OVER && state != STATE_DIED) player_draw();
+  if (is_boss_level()) {
+    shots_draw();
+    if (reverse) boss_draw();
+  }
   platforms_draw(reverse);
   bugs_draw(reverse);
+  if (is_boss_level() && !reverse) boss_draw();
   tokens_draw();
 }
 
@@ -220,6 +270,9 @@ void main(void) {
         break;
       case STATE_GAME_OVER:
         update_game_over();
+        break;
+      case STATE_DIED:
+        update_died();
         break;
       case STATE_WIN:
         win_update();

@@ -118,5 +118,11 @@ export const MOON = [
   "......bbbb......",
 ];
 
+// Boss health bar segments and the star ammo icon, drawn with the text palette
+export const HEALTH_FULL = ["cccccccc", "aaaaaaaa", "bbbbbbbb", "bbbbbbbb", "bbbbbbbb", "bbbbbbbb", "cccccccc", "........"];
+export const HEALTH_HALF = ["cccccccc", "aaaacccc", "bbbbcccc", "bbbbcccc", "bbbbcccc", "bbbbcccc", "cccccccc", "........"];
+export const HEALTH_EMPTY = ["cccccccc", "cccccccc", "cccccccc", "cccccccc", "cccccccc", "cccccccc", "cccccccc", "........"];
+export const AMMO_ICON = ["...b....", "...b....", "..bab...", "bbaaabb.", "..bab...", "...b....", "...b....", "........"];
+
 // Life icon for the HUD, drawn with the text palette (a = white, b = orange, c = black)
 export const LIFE_ICON = ["...aa...", "...cc...", ".cccccc.", "cbbbbbbc", "cbcbbcbc", "cbbbbbbc", ".cccccc.", "..c..c.."];

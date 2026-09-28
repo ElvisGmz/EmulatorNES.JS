@@ -1,7 +1,7 @@
 #include "game.h"
 #include "assets.h"
 
-// Level legend: "." sky, "#" ground, "=" cloud (one-way platform), "P" player start,
+// Level legend: "." sky, "#" ground, "=" cloud (one-way platform), "P" player start, "X" boss,
 // "o" token, "b"/"d" bug walking left/right, "f" flying bug, "S" spring, "^" ice spikes,
 // "H"/"V" horizontal/vertical moving cloud (32 px wide) and ":" where moving clouds turn.
 // A tapped jump reaches 2 rows up, a held one about 3.5 rows, a spring about 5.
@@ -157,15 +157,53 @@ static const char level_last[] =
     "####^^####^^####"
     "####..####..####";
 
+// Boss arenas: the tokens here are star ammo that grows back (throw them with B)
+
+static const char arena_king_bug[] =
+    "................"
+    "................"
+    "................"
+    "................"
+    "................"
+    "................"
+    "................"
+    "................"
+    "...o........o..."
+    "..===......===.."
+    ".P.....oo.....X."
+    "################"
+    "################";
+
+static const char arena_segfault[] =
+    "................"
+    "................"
+    "................"
+    "......X........."
+    "................"
+    "................"
+    "..o..........o.."
+    ".===........===."
+    "................"
+    "....==....==...."
+    ".P....o..o......"
+    "################"
+    "################";
+
 static const char *const levels[LEVEL_COUNT] = {
-    level_hello,  level_gaps,  level_bugs,   level_clouds,  level_final,
-    level_bounce, level_train, level_spikes, level_buzzing, level_last,
+    level_hello,    level_gaps,  level_bugs,  level_clouds, level_final,   arena_king_bug,
+    level_bounce,   level_train, level_spikes, level_buzzing, level_last,  arena_segfault,
 };
 static const char *const level_names[LEVEL_COUNT] = {
-    "HELLO, WORLD", "MIND THE GAP", "BUG HUNT",     "CLOUD HOP", "FINAL PUSH",
-    "BOUNCE HOUSE", "SKY TRAIN",    "SPIKE GARDEN", "BUZZING",   "THE LAST TOKEN",
+    "HELLO, WORLD", "MIND THE GAP", "BUG HUNT",     "CLOUD HOP", "FINAL PUSH",     "KING BUG",
+    "BOUNCE HOUSE", "SKY TRAIN",    "SPIKE GARDEN", "BUZZING",   "THE LAST TOKEN", "THE SEGFAULT",
 };
-static const u8 level_bug_speeds[LEVEL_COUNT] = {8, 8, 10, 12, 14, 14, 14, 16, 16, 18};
+// Number shown in the HUD and intro; 0 marks a boss arena
+static const u8 level_numbers[LEVEL_COUNT] = {1, 2, 3, 4, 5, 0, 6, 7, 8, 9, 10, 0};
+static const u8 level_bosses[LEVEL_COUNT] = {
+    BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_KING_BUG,
+    BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_SEGFAULT,
+};
+static const u8 level_bug_speeds[LEVEL_COUNT] = {8, 8, 10, 12, 14, 16, 14, 14, 16, 16, 18, 20};
 
 #define MOON_ROW 3
 #define MOON_COLUMN 13
@@ -196,6 +234,18 @@ u8 cell_is_floor(u8 cell_type) {
   return cell_type == CELL_SOLID || cell_type == CELL_CLOUD || cell_type == CELL_SPRING;
 }
 
+/** Draws a token back (boss arenas regrow their star ammo). */
+void level_draw_token_cell(u8 x, u8 y) {
+  static const u8 top_tiles[2] = {BG_TOKEN, BG_TOKEN + 1};
+  static const u8 bottom_tiles[2] = {BG_TOKEN + 16, BG_TOKEN + 17};
+  u8 column_tile = (x >> 4) << 1;
+  u8 row_tile = (y >> 4) << 1;
+
+  level_map[(y & 0xF0) | (x >> 4)] = CELL_TOKEN;
+  vram_queue_bytes(NAMETABLE_ADDR(column_tile, row_tile), top_tiles, 2);
+  vram_queue_bytes(NAMETABLE_ADDR(column_tile, row_tile + 1), bottom_tiles, 2);
+}
+
 /** Clears a collected token: back to empty sky in the map and, next frame, on screen. */
 void level_erase_cell(u8 x, u8 y) {
   static const u8 empty_tiles[2] = {BG_EMPTY, BG_EMPTY};
@@ -209,6 +259,14 @@ void level_erase_cell(u8 x, u8 y) {
 
 const char *level_name(u8 level) {
   return level_names[level];
+}
+
+u8 level_number(u8 level) {
+  return level_numbers[level];
+}
+
+u8 level_boss(u8 level) {
+  return level_bosses[level];
 }
 
 void level_load(u8 level) {
@@ -263,6 +321,8 @@ void level_load(u8 level) {
             bug_add(x, y, 1, 1);
           } else if (symbol == 'H' || symbol == 'V') {
             platform_add(x, y, symbol == 'V');
+          } else if (symbol == 'X') {
+            boss_spawn(level_bosses[level], x);
           }
       }
     }

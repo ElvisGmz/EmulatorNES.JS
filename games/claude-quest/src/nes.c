@@ -92,6 +92,29 @@ void oam_meta_2x2(u8 x, u8 y, u8 first_tile, u8 attributes) {
   oam_sprite(x + 8, y + 8, first_tile + 17, attributes);
 }
 
+/**
+ * Draws a 32x32 metasprite whose tiles are laid out 16 per row. `visible_tiles` has one
+ * bit per tile (row * 4 + column) so empty tiles don't waste the 8-sprites-per-line budget.
+ */
+void oam_meta_4x4(u8 x, u8 y, u8 first_tile, u8 attributes, u16 visible_tiles) {
+  static const u8 column_bits[4] = {1, 2, 4, 8};
+  static u8 row;
+  static u8 column;
+  static u8 source_column;
+  static u8 row_bits;
+  static u8 row_tile;
+  for (row = 0; row < 4; ++row) {
+    row_bits = (u8)visible_tiles & 0x0F;
+    visible_tiles >>= 4;
+    row_tile = first_tile + (row << 4);
+    for (column = 0; column < 4; ++column) {
+      source_column = (attributes & SPRITE_FLIP_X) ? 3 - column : column;
+      if (row_bits & column_bits[source_column]) oam_sprite(x + (column << 3), y, row_tile + source_column, attributes);
+    }
+    y += 8;
+  }
+}
+
 void oam_end(void) {
   index = oam_index;
   do {

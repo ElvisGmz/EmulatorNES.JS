@@ -43,13 +43,20 @@
 #define MAX_TOKENS 10
 #define MAX_PLATFORMS 3
 #define NO_PLATFORM 0xFF
-#define LEVEL_COUNT 10
+#define LEVEL_COUNT 12
 // Levels from this index on are the hard ones, with their own music
-#define FIRST_HARD_LEVEL 5
+#define FIRST_HARD_LEVEL 6
+
+#define BOSS_NONE 0
+#define BOSS_KING_BUG 1
+#define BOSS_SEGFAULT 2
+#define MAX_STAR_AMMO 5
 #define STARTING_LIVES 3
 
 #define SCORE_TOKEN 5
 #define SCORE_BUG 10
+#define SCORE_BOSS_HIT 5
+#define SCORE_BOSS 100
 #define SCORE_PER_EXTRA_LIFE 200
 
 // level.c
@@ -65,6 +72,9 @@ void level_load(u8 level);
 void level_draw(void);
 void sky_draw(u8 ground_row, u16 text_row_mask);
 const char *level_name(u8 level);
+u8 level_number(u8 level);
+u8 level_boss(u8 level);
+void level_draw_token_cell(u8 x, u8 y);
 
 // player.c
 extern s16 player_x;
@@ -92,6 +102,7 @@ void bug_add(u8 x, u8 y, u8 facing_left, u8 flying);
 void bugs_update(void);
 void bugs_draw(u8 reverse);
 u8 bugs_check_player(void);
+u8 bugs_alive(void);
 
 // tokens.c
 extern u8 tokens_left;
@@ -99,6 +110,25 @@ void tokens_reset(void);
 void token_add(u8 x, u8 y);
 void tokens_update(void);
 void tokens_draw(void);
+// In boss arenas tokens are star ammo and grow back after being picked up
+void tokens_set_ammo_mode(u8 enabled);
+
+// boss.c
+extern u8 boss_health;
+extern u8 boss_max_health;
+void boss_spawn(u8 type, u8 x);
+void boss_update(void);
+void boss_draw(void);
+u8 boss_hurts_player(void);
+u8 boss_hit_by_star(u8 x, u8 y);
+u8 boss_defeated(void);
+const char *boss_name(void);
+
+// shots.c
+extern u8 star_ammo;
+void shots_reset(void);
+void shots_update(void);
+void shots_draw(void);
 
 // platforms.c
 extern u8 platform_count;
@@ -124,6 +154,8 @@ void hud_refresh_now(void);
 void hud_refresh(void);
 void score_reset(void);
 void score_add(u8 tens);
+void hud_refresh_boss(void);
+void hud_refresh_ammo(void);
 
 // screens.c
 void title_draw(void);
