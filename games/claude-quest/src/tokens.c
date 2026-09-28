@@ -2,16 +2,16 @@
 #include "assets.h"
 #include "audio.h"
 
-#define TOKEN_SIZE 8
+// Tokens are 16x16 background stars (drawn by level.c); only the pickup sparkle is a sprite
+#define TOKEN_SIZE 16
+#define TOKEN_MARGIN 3
 #define SPARKLE_FRAMES 16
+#define SPARKLE_OFFSET 4
 // Claude's pickup box is a bit smaller than the sprite so grabs feel deliberate
 #define REACH_LEFT 2
 #define REACH_RIGHT 13
 #define REACH_TOP 2
 #define REACH_BOTTOM 15
-
-// Twinkle cycle: big, medium, small, medium
-static const u8 twinkle_frames[4] = {0, 1, 2, 1};
 
 u8 tokens_left;
 
@@ -51,30 +51,26 @@ void tokens_update(void) {
 
   for (index = 0; index < token_count; ++index) {
     if (!token_alive[index]) continue;
-    if (px + REACH_LEFT > token_x[index] + TOKEN_SIZE - 1 || px + REACH_RIGHT < token_x[index]) continue;
-    if (py + REACH_TOP > token_y[index] + TOKEN_SIZE - 1 || py + REACH_BOTTOM < token_y[index]) continue;
+    if (px + REACH_LEFT > token_x[index] + TOKEN_SIZE - TOKEN_MARGIN ||
+        px + REACH_RIGHT < token_x[index] + TOKEN_MARGIN) {
+      continue;
+    }
+    if (py + REACH_TOP > token_y[index] + TOKEN_SIZE - TOKEN_MARGIN ||
+        py + REACH_BOTTOM < token_y[index] + TOKEN_MARGIN) {
+      continue;
+    }
 
     token_alive[index] = 0;
     --tokens_left;
-    sparkle_x = token_x[index];
-    sparkle_y = token_y[index];
+    level_erase_cell(token_x[index], token_y[index]);
+    sparkle_x = token_x[index] + SPARKLE_OFFSET;
+    sparkle_y = token_y[index] + SPARKLE_OFFSET;
     sparkle_timer = SPARKLE_FRAMES;
     sfx_play(SFX_TOKEN);
     score_add(SCORE_TOKEN);
   }
 }
 
-void tokens_draw(u8 reverse) {
-  u8 i;
-  u8 phase;
-  for (i = 0; i < token_count; ++i) {
-    index = reverse ? token_count - 1 - i : i;
-    if (!token_alive[index]) continue;
-
-    phase = (frame_counter >> 3) + index;
-    oam_sprite(token_x[index], token_y[index] + ((phase >> 2) & 1), SPR_TOKEN + twinkle_frames[phase & 3],
-               SPRITE_PALETTE_TOKEN);
-  }
-
-  if (sparkle_timer) oam_sprite(sparkle_x, sparkle_y, SPR_SPARKLE, SPRITE_PALETTE_TOKEN);
+void tokens_draw(void) {
+  if (sparkle_timer) oam_sprite(sparkle_x, sparkle_y, SPR_SPARKLE, SPRITE_PALETTE_SPARKLE);
 }

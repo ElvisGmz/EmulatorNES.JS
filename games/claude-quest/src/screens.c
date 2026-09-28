@@ -38,7 +38,7 @@ static void draw_decorations(void) {
   for (index = 0; index < sizeof(decoration_x); ++index) {
     phase = (frame_counter >> 3) + index;
     oam_sprite(decoration_x[index], decoration_y[index] + ((phase >> 2) & 1), SPR_TOKEN + (phase & 1),
-               SPRITE_PALETTE_TOKEN);
+               SPRITE_PALETTE_SPARKLE);
   }
 }
 

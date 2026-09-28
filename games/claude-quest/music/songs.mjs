@@ -143,6 +143,52 @@ export const SONGS = {
     noise: { notes: repeat("K/8 H/8 S/8 H/8 K/8 K/8 S/8 H/8", 16) },
   },
 
+  // Tense theme for the hard levels, in A minor
+  danger: {
+    framesPerSixteenth: 5,
+    loop: true,
+    pulse1: {
+      instrument: "lead",
+      notes: bars(
+        "A5/8 C6/8 E6/8 C6/8 A5/8 E6/8 C6/8 A5/8",
+        "F5/8 A5/8 C6/8 A5/8 F6/4 E6/4",
+        "G5/8 B5/8 D6/8 B5/8 G6/4 F6/8 D6/8",
+        "E6/4. D6/8 B5/4 G#5/4",
+        "A5/8 E6/8 A6/8 E6/8 C6/8 E6/8 A5/4",
+        "C6/8 A5/8 F5/8 A5/8 C6/8 F6/8 E6/8 C6/8",
+        "D6/8 B5/8 G5/8 B5/8 D6/8 G6/8 F6/8 D6/8",
+        "E6/4 B5/4 G#5/4 E5/4",
+      ),
+    },
+    pulse2: {
+      instrument: "harmony",
+      notes: bars(
+        repeat("A3/8 C4/8 E4/8 C4/8", 2),
+        repeat("F3/8 A3/8 C4/8 A3/8", 2),
+        repeat("G3/8 B3/8 D4/8 B3/8", 2),
+        repeat("E3/8 G#3/8 B3/8 G#3/8", 2),
+        repeat("A3/8 C4/8 E4/8 C4/8", 2),
+        repeat("F3/8 A3/8 C4/8 A3/8", 2),
+        repeat("G3/8 B3/8 D4/8 B3/8", 2),
+        repeat("E3/8 G#3/8 B3/8 G#3/8", 2),
+      ),
+    },
+    triangle: {
+      instrument: "bass",
+      notes: bars(
+        "A2/8 A2/8 E3/8 A2/8 A2/8 A2/8 E3/8 G2/8",
+        "F2/8 F2/8 C3/8 F2/8 F2/8 F2/8 C3/8 E2/8",
+        "G2/8 G2/8 D3/8 G2/8 G2/8 G2/8 D3/8 F2/8",
+        "E2/8 E2/8 B2/8 E2/8 E2/8 G#2/8 B2/8 D3/8",
+        "A2/8 A2/8 E3/8 A2/8 A2/8 A2/8 E3/8 G2/8",
+        "F2/8 F2/8 C3/8 F2/8 F2/8 F2/8 C3/8 E2/8",
+        "G2/8 G2/8 D3/8 G2/8 G2/8 G2/8 D3/8 F2/8",
+        "E2/8 E2/8 B2/8 E2/8 G#2/8 B2/8 D3/8 E3/8",
+      ),
+    },
+    noise: { notes: repeat("K/8 H/8 S/8 H/8 K/16 K/16 H/8 S/8 H/8", 8) },
+  },
+
   clear: {
     framesPerSixteenth: 5,
     loop: false,
@@ -186,4 +232,5 @@ export const SOUND_EFFECTS = {
   hurt: { channel: "pulse2", instrument: "blip", notes: "G5:4 F5:4 D5:4 B4:4 G4:8" },
   start: { channel: "pulse2", instrument: "chime", notes: "C6:4 G6:12" },
   life: { channel: "pulse2", instrument: "chime", notes: "C6:4 E6:4 G6:4 C7:12" },
+  spring: { channel: "pulse2", instrument: "blip", notes: "C5:2 E5:2 G5:2 C6:2 E6:2 G6:8" },
 };

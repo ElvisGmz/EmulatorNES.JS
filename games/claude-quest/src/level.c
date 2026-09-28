@@ -2,8 +2,9 @@
 #include "assets.h"
 
 // Level legend: "." sky, "#" ground, "=" cloud (one-way platform), "P" player start,
-// "o" token, "b" bug walking left, "d" bug walking right. Each row is 16 cells and a
-// jump reaches 2 rows up, so every platform is at most 2 rows above the previous one.
+// "o" token, "b"/"d" bug walking left/right, "f" flying bug, "S" spring, "^" ice spikes,
+// "H"/"V" horizontal/vertical moving cloud (32 px wide) and ":" where moving clouds turn.
+// A tapped jump reaches 2 rows up, a held one about 3.5 rows, a spring about 5.
 static const char level_hello[] =
     "................"
     "................"
@@ -26,7 +27,7 @@ static const char level_gaps[] =
     "................"
     "......o..o......"
     ".....======....."
-    "o..............o"
+    ".o............o."
     "===..........==="
     "....o......o...."
     "...===....===..."
@@ -79,9 +80,92 @@ static const char level_final[] =
     "####..####..####"
     "####..####..####";
 
-static const char *const levels[LEVEL_COUNT] = {level_hello, level_gaps, level_bugs, level_clouds, level_final};
-static const char *const level_names[LEVEL_COUNT] = {"HELLO, WORLD", "MIND THE GAP", "BUG HUNT", "CLOUD HOP", "FINAL PUSH"};
-static const u8 level_bug_speeds[LEVEL_COUNT] = {8, 8, 10, 12, 14};
+// Hard levels: they mix springs, spikes, flying bugs and moving clouds
+
+static const char level_bounce[] =
+    "................"
+    "................"
+    "..o.........o..."
+    ".===.......===.."
+    "................"
+    "......o..o......"
+    ".....======....."
+    "................"
+    "........f......."
+    ".o............o."
+    ".PS.^^.S..^^.S.."
+    "################"
+    "################";
+
+static const char level_train[] =
+    "................"
+    "................"
+    "................"
+    "......o..o......"
+    "....:H......:..."
+    "..........f....."
+    "..o..........o.."
+    ".===........===."
+    "........o......."
+    "...:H.......:..."
+    ".P............o."
+    "###..........###"
+    "###..........###";
+
+static const char level_spikes[] =
+    "................"
+    "................"
+    "...o........o..."
+    "..===......===.."
+    "................"
+    ".......oo......."
+    "......====......"
+    "................"
+    ".o..b......b..o."
+    "=======..======="
+    ".P..^^..o..^^..."
+    "################"
+    "################";
+
+static const char level_buzzing[] =
+    "................"
+    "................"
+    ".o............o."
+    "===..........==="
+    "......:..:......"
+    "..f..........f.."
+    "......o..o......"
+    "................"
+    "...o........o..."
+    "......V..V......"
+    ".P............o."
+    "######:..:######"
+    "######....######";
+
+static const char level_last[] =
+    "................"
+    "................"
+    ".......oo......."
+    "......====......"
+    "..o...........o."
+    ".===.:H....:.==="
+    "........f......."
+    "................"
+    ".o....o..o....o."
+    "===..S....S..==="
+    ".P.....b.....d.."
+    "####^^####^^####"
+    "####..####..####";
+
+static const char *const levels[LEVEL_COUNT] = {
+    level_hello,  level_gaps,  level_bugs,   level_clouds,  level_final,
+    level_bounce, level_train, level_spikes, level_buzzing, level_last,
+};
+static const char *const level_names[LEVEL_COUNT] = {
+    "HELLO, WORLD", "MIND THE GAP", "BUG HUNT",     "CLOUD HOP", "FINAL PUSH",
+    "BOUNCE HOUSE", "SKY TRAIN",    "SPIKE GARDEN", "BUZZING",   "THE LAST TOKEN",
+};
+static const u8 level_bug_speeds[LEVEL_COUNT] = {8, 8, 10, 12, 14, 14, 14, 16, 16, 18};
 
 #define MOON_ROW 3
 #define MOON_COLUMN 13
@@ -108,6 +192,21 @@ u8 cell_at(u8 x, u8 y) {
   return level_map[(y & 0xF0) | (x >> 4)];
 }
 
+u8 cell_is_floor(u8 cell_type) {
+  return cell_type == CELL_SOLID || cell_type == CELL_CLOUD || cell_type == CELL_SPRING;
+}
+
+/** Clears a collected token: back to empty sky in the map and, next frame, on screen. */
+void level_erase_cell(u8 x, u8 y) {
+  static const u8 empty_tiles[2] = {BG_EMPTY, BG_EMPTY};
+  u8 column_tile = (x >> 4) << 1;
+  u8 row_tile = (y >> 4) << 1;
+
+  level_map[(y & 0xF0) | (x >> 4)] = CELL_EMPTY;
+  vram_queue_bytes(NAMETABLE_ADDR(column_tile, row_tile), empty_tiles, 2);
+  vram_queue_bytes(NAMETABLE_ADDR(column_tile, row_tile + 1), empty_tiles, 2);
+}
+
 const char *level_name(u8 level) {
   return level_names[level];
 }
@@ -123,6 +222,7 @@ void level_load(u8 level) {
   text_rows = TEXT_ROWS_IN_LEVELS;
   bugs_reset();
   tokens_reset();
+  platforms_reset();
 
   for (index = 0; index < LEVEL_FIRST_ROW * MAP_COLUMNS; ++index) level_map[index] = CELL_EMPTY;
 
@@ -132,15 +232,38 @@ void level_load(u8 level) {
       index = ((row + LEVEL_FIRST_ROW) << 4) | column;
       x = column << 4;
       y = (row + LEVEL_FIRST_ROW) << 4;
-      level_map[index] = symbol == '#' ? CELL_SOLID : symbol == '=' ? CELL_CLOUD : CELL_EMPTY;
-
-      if (symbol == 'P') {
-        player_start_x = x;
-        player_start_y = y;
-      } else if (symbol == 'o') {
-        token_add(x + 4, y + 4);
-      } else if (symbol == 'b' || symbol == 'd') {
-        bug_add(x, y, symbol == 'b');
+      switch (symbol) {
+        case '#':
+          level_map[index] = CELL_SOLID;
+          break;
+        case '=':
+          level_map[index] = CELL_CLOUD;
+          break;
+        case 'S':
+          level_map[index] = CELL_SPRING;
+          break;
+        case '^':
+          level_map[index] = CELL_SPIKES;
+          break;
+        case ':':
+          level_map[index] = CELL_MARKER;
+          break;
+        case 'o':
+          level_map[index] = CELL_TOKEN;
+          token_add(x, y);
+          break;
+        default:
+          level_map[index] = CELL_EMPTY;
+          if (symbol == 'P') {
+            player_start_x = x;
+            player_start_y = y;
+          } else if (symbol == 'b' || symbol == 'd') {
+            bug_add(x, y, symbol == 'b', 0);
+          } else if (symbol == 'f') {
+            bug_add(x, y, 1, 1);
+          } else if (symbol == 'H' || symbol == 'V') {
+            platform_add(x, y, symbol == 'V');
+          }
       }
     }
   }
@@ -170,9 +293,16 @@ static u8 row_is_text;
 static u8 star_seed;
 
 static u8 cell_palette(void) {
-  if (cell == CELL_SOLID) return PALETTE_GROUND;
-  if (cell == CELL_CLOUD) return PALETTE_CLOUD;
+  if (cell == CELL_SOLID || cell == CELL_SPRING) return PALETTE_GROUND;
+  if (cell == CELL_CLOUD || cell == CELL_SPIKES) return PALETTE_CLOUD;
   return row_is_text ? PALETTE_TEXT : PALETTE_SKY;
+}
+
+static void metatile(u8 tile_index, u8 base) {
+  tiles[tile_index] = base;
+  tiles[tile_index + 1] = base + 1;
+  tiles[tile_index + 32] = base + 16;
+  tiles[tile_index + 33] = base + 17;
 }
 
 static void cell_tiles(void) {
@@ -188,11 +318,19 @@ static void cell_tiles(void) {
   tiles[tile_index + 33] = BG_EMPTY;
 
   if (cell == CELL_SOLID) {
-    base = (row > 0 && level_map[index - MAP_COLUMNS] == CELL_SOLID) ? BG_GROUND_FILL : BG_GROUND_TOP;
-    tiles[tile_index] = base;
-    tiles[tile_index + 1] = base + 1;
-    tiles[tile_index + 32] = base + 16;
-    tiles[tile_index + 33] = base + 17;
+    metatile(tile_index, (row > 0 && level_map[index - MAP_COLUMNS] == CELL_SOLID) ? BG_GROUND_FILL : BG_GROUND_TOP);
+    return;
+  }
+  if (cell == CELL_TOKEN) {
+    metatile(tile_index, BG_TOKEN);
+    return;
+  }
+  if (cell == CELL_SPRING) {
+    metatile(tile_index, BG_SPRING);
+    return;
+  }
+  if (cell == CELL_SPIKES) {
+    metatile(tile_index, BG_SPIKES);
     return;
   }
 
@@ -208,10 +346,7 @@ static void cell_tiles(void) {
   if (row_is_text) return;
 
   if (row == MOON_ROW && column == MOON_COLUMN) {
-    tiles[tile_index] = BG_MOON;
-    tiles[tile_index + 1] = BG_MOON + 1;
-    tiles[tile_index + 32] = BG_MOON + 16;
-    tiles[tile_index + 33] = BG_MOON + 17;
+    metatile(tile_index, BG_MOON);
     return;
   }
 

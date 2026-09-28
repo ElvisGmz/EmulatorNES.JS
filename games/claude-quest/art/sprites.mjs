@@ -100,6 +100,42 @@ export const BUG_SQUASHED = [
   ".aaaaaaaaaaaaaa.",
 ];
 
+const FLY_BODY = [
+  "..a....c.c......",
+  "...a..aaaaaa....",
+  "...aaabbbbbbaa..",
+  "..abcabbbbbbbba.",
+  ".abbbbbbcbbbbbba",
+  ".abbbbbbcbbbbbba",
+  "..aaaabbcbbbbba.",
+  "....aaaaaaaaaa..",
+];
+
+export const FLY_WINGS_UP = [
+  "......c...c.....",
+  ".....ccc.ccc....",
+  ".....ccc.ccc....",
+  "......cc.cc.....",
+  ...FLY_BODY,
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+export const FLY_WINGS_DOWN = [
+  "................",
+  "................",
+  "................",
+  "................",
+  ...FLY_BODY.map((row, index) => (index === 0 ? "..a............." : row)),
+  "....ccc..ccc....",
+  ".....cc...cc....",
+  "................",
+  "................",
+];
+
+// Decorative sparkles for the title and ending screens (tokens in levels are background tiles)
 export const TOKEN_FRAMES = [
   ["...b....", "...c....", "..bcb...", "bcccccb.", "..bcb...", "...c....", "...b....", "........"],
   ["........", "...b....", "...c....", ".bcccb..", "...c....", "...b....", "........", "........"],

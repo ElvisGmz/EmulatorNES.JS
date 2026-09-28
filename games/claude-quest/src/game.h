@@ -14,6 +14,11 @@
 #define CELL_EMPTY 0
 #define CELL_SOLID 1
 #define CELL_CLOUD 2
+#define CELL_TOKEN 3
+#define CELL_SPRING 4
+#define CELL_SPIKES 5
+// Invisible turnaround point for moving platforms
+#define CELL_MARKER 6
 
 #define PALETTE_GROUND 0
 #define PALETTE_CLOUD 1
@@ -22,8 +27,9 @@
 
 #define SPRITE_PALETTE_CLAUDE 0
 #define SPRITE_PALETTE_BUG 1
-#define SPRITE_PALETTE_TOKEN 2
-#define SPRITE_PALETTE_HURT 3
+#define SPRITE_PALETTE_SPARKLE 2
+#define SPRITE_PALETTE_HURT 2
+#define SPRITE_PALETTE_PLATFORM 3
 
 #define MESSAGE_ROW 4
 #define HUD_ROW 2
@@ -35,7 +41,11 @@
 
 #define MAX_BUGS 5
 #define MAX_TOKENS 10
-#define LEVEL_COUNT 5
+#define MAX_PLATFORMS 3
+#define NO_PLATFORM 0xFF
+#define LEVEL_COUNT 10
+// Levels from this index on are the hard ones, with their own music
+#define FIRST_HARD_LEVEL 5
 #define STARTING_LIVES 3
 
 #define SCORE_TOKEN 5
@@ -49,6 +59,8 @@ extern u8 player_start_x;
 extern u8 player_start_y;
 extern u8 bug_speed;
 u8 cell_at(u8 x, u8 y);
+u8 cell_is_floor(u8 cell);
+void level_erase_cell(u8 x, u8 y);
 void level_load(u8 level);
 void level_draw(void);
 void sky_draw(u8 ground_row, u16 text_row_mask);
@@ -67,6 +79,7 @@ void player_draw(void);
 void player_bounce(void);
 u8 player_fell_off(void);
 void player_start_hurt(void);
+u8 player_touching_spikes(void);
 u8 player_update_hurt(void);
 void player_draw_hurt(void);
 u8 player_pixel_x(void);
@@ -75,7 +88,7 @@ u8 player_pixel_y(void);
 // bugs.c
 extern u8 bug_count;
 void bugs_reset(void);
-void bug_add(u8 x, u8 y, u8 facing_left);
+void bug_add(u8 x, u8 y, u8 facing_left, u8 flying);
 void bugs_update(void);
 void bugs_draw(u8 reverse);
 u8 bugs_check_player(void);
@@ -85,7 +98,18 @@ extern u8 tokens_left;
 void tokens_reset(void);
 void token_add(u8 x, u8 y);
 void tokens_update(void);
-void tokens_draw(u8 reverse);
+void tokens_draw(void);
+
+// platforms.c
+extern u8 platform_count;
+extern u8 player_platform;
+void platforms_reset(void);
+void platform_add(u8 x, u8 y, u8 vertical);
+void platforms_update(void);
+void platforms_draw(u8 reverse);
+void platforms_carry_player(void);
+u8 platform_landing(u8 x, u8 previous_feet, u8 feet);
+u8 platform_top(u8 index);
 
 // hud.c
 // Score is stored in tens, so a u16 can hold up to 655350 points

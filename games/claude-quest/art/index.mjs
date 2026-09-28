@@ -9,6 +9,8 @@ const LOGO_TEXT = "CLAUDE";
 const LOGO_SCALE = 4;
 
 export const SKY_COLOR = 0x0c;
+// Cycled into the last sky color at runtime so stars and tokens twinkle together
+export const SKY_TWINKLE_COLORS = [0x30, 0x38, 0x28, 0x38];
 
 // NES palette indices: backdrop + 3 colors per sub-palette
 export const PALETTES = {
@@ -16,13 +18,13 @@ export const PALETTES = {
     [SKY_COLOR, 0x07, 0x17, 0x2a], // 0 ground: dark soil, soil, grass
     [SKY_COLOR, 0x21, 0x31, 0x30], // 1 clouds
     [SKY_COLOR, 0x30, 0x26, 0x0f], // 2 text: white, Claude orange, black shadow
-    [SKY_COLOR, 0x2d, 0x38, 0x30], // 3 sky: dim star, moon, bright star
+    [SKY_COLOR, 0x28, 0x38, SKY_TWINKLE_COLORS[0]], // 3 sky and tokens: gold, pale yellow, twinkling white
   ],
   sprites: [
     [SKY_COLOR, 0x0f, 0x26, 0x36], // 0 Claude: outline, orange, peach
-    [SKY_COLOR, 0x0f, 0x1a, 0x3a], // 1 bugs: outline, green, pale green
-    [SKY_COLOR, 0x26, 0x28, 0x30], // 2 tokens: orange, yellow, white
-    [SKY_COLOR, 0x0f, 0x16, 0x30], // 3 Claude when hurt: outline, red, white
+    [SKY_COLOR, 0x0f, 0x1a, 0x3a], // 1 bugs and flies: outline, green, pale green
+    [SKY_COLOR, 0x26, 0x28, 0x30], // 2 sparkles and Claude when hurt: orange, yellow, white
+    [SKY_COLOR, 0x13, 0x23, 0x30], // 3 moving clouds: purple, lavender, white
   ],
 };
 
@@ -39,6 +41,9 @@ export const BACKGROUND_TILES = {
   CLOUD_RIGHT: 0x0c,
   MOON: 0x0e,
   LIFE_ICON: 0x10,
+  TOKEN: 0x60,
+  SPRING: 0x62,
+  SPIKES: 0x64,
   LOGO_FIRST: 0x80,
 };
 
@@ -50,8 +55,11 @@ export const SPRITE_TILES = {
   BUG_WALK_1: 0x08,
   BUG_WALK_2: 0x0a,
   BUG_SQUASHED: 0x0c,
+  FLY_WINGS_UP: 0x0e,
   TOKEN: 0x20,
   SPARKLE: 0x23,
+  FLY_WINGS_DOWN: 0x24,
+  PLATFORM: 0x26,
 };
 
 function placeRow(table, firstIndex, rows) {
@@ -74,6 +82,9 @@ function buildBackgroundTable() {
   placeRow(table, t.CLOUD_RIGHT, tiles.CLOUD_RIGHT);
   table.placeMeta(t.MOON, tiles.MOON);
   table.place(t.LIFE_ICON, tiles.LIFE_ICON);
+  table.placeMeta(t.TOKEN, tiles.TOKEN);
+  table.placeMeta(t.SPRING, tiles.SPRING);
+  table.placeMeta(t.SPIKES, tiles.SPIKES);
 
   for (const [character, glyph] of Object.entries(FONT_GLYPHS)) {
     table.place(String(character).charCodeAt(0), glyphToTile(glyph));
@@ -97,6 +108,11 @@ function buildSpriteTable() {
   table.placeMeta(t.BUG_WALK_1, sprites.BUG_WALK_1);
   table.placeMeta(t.BUG_WALK_2, sprites.BUG_WALK_2);
   table.placeMeta(t.BUG_SQUASHED, sprites.BUG_SQUASHED);
+  table.placeMeta(t.FLY_WINGS_UP, sprites.FLY_WINGS_UP);
+  table.placeMeta(t.FLY_WINGS_DOWN, sprites.FLY_WINGS_DOWN);
+  // Moving clouds are 32x8 sprites: the rounded ends of the background cloud art
+  placeRow(table, t.PLATFORM, tiles.CLOUD_LEFT);
+  placeRow(table, t.PLATFORM + 2, tiles.CLOUD_RIGHT);
   sprites.TOKEN_FRAMES.forEach((frame, index) => table.place(t.TOKEN + index, frame));
   table.place(t.SPARKLE, sprites.SPARKLE);
   return table;
@@ -138,10 +154,12 @@ ${toDefines("BG_", BACKGROUND_TILES)}
 
 ${toDefines("SPR_", SPRITE_TILES)}
 
+#define SKY_TWINKLE_COUNT ${SKY_TWINKLE_COLORS.length}
 #define LOGO_WIDTH ${logo.width}
 #define LOGO_HEIGHT ${logo.height}
 
 extern const unsigned char game_palette[32];
+extern const unsigned char sky_twinkle_colors[SKY_TWINKLE_COUNT];
 extern const unsigned char logo_layout[${logo.layout.length}];
 
 #endif
@@ -152,6 +170,10 @@ extern const unsigned char logo_layout[${logo.layout.length}];
 
 const unsigned char game_palette[32] = {
 ${toByteArray(palette)}
+};
+
+const unsigned char sky_twinkle_colors[SKY_TWINKLE_COUNT] = {
+${toByteArray(SKY_TWINKLE_COLORS)}
 };
 
 const unsigned char logo_layout[${logo.layout.length}] = {

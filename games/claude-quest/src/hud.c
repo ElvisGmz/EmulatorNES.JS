@@ -76,7 +76,13 @@ void hud_refresh_now(void) {
   vram_write(line, 3);
 
   vram_address(NAMETABLE_ADDR(LEVEL_DIGIT_COLUMN, HUD_ROW));
-  PPU_DATA = '1' + current_level;
+  if (current_level >= 9) {
+    PPU_DATA = '1';
+    PPU_DATA = '0' + current_level - 9;
+  } else {
+    PPU_DATA = '1' + current_level;
+    PPU_DATA = ' ';
+  }
 }
 
 /** Queues the HUD values for the next frame while rendering is on. */

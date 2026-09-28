@@ -63,9 +63,41 @@ export const CLOUD_LEFT = [
 
 export const CLOUD_RIGHT = CLOUD_LEFT.map((row) => [...row].reverse().join(""));
 
-export const STAR_DIM = ["........", "........", "........", "...a....", "........", "........", "........", "........"];
-export const STAR_MEDIUM = ["........", "........", "...a....", "..aca...", "...a....", "........", "........", "........"];
-export const STAR_BRIGHT = ["........", "...a....", "...c....", ".accca..", "...c....", "...a....", "........", "........"];
+// Sky palette: a = gold, b = pale yellow, c = white (c is cycled at runtime so everything twinkles)
+export const STAR_DIM = ["........", "........", "...a....", "..aba...", "...a....", "........", "........", "........"];
+export const STAR_MEDIUM = ["........", "...a....", "...b....", ".abcba..", "...b....", "...a....", "........", "........"];
+export const STAR_BRIGHT = ["...a....", ".a.b.a..", "..bcb...", "abcccba.", "..bcb...", ".a.b.a..", "...a....", "........"];
+
+const mirrorRow = (half) => half + [...half].reverse().join("");
+const TOKEN_TOP_LEFT = ["........", ".......a", "......ab", "......ab", ".....abb", "..aaabbc", ".abbbbcc", "abbbcccc"];
+
+/** The collectible token: a chunky four-point star drawn with the sky palette, mirrored both ways. */
+export const TOKEN = [...TOKEN_TOP_LEFT, ...[...TOKEN_TOP_LEFT].reverse()].map(mirrorRow);
+
+// Spring pad drawn with the ground palette: a = dark soil, b = soil, c = grass green
+export const SPRING = [
+  "................",
+  "...cccccccccc...",
+  "..cccccccccccc..",
+  ".cccccccccccccc.",
+  ".aaaaaaaaaaaaaa.",
+  "....abbbbbba....",
+  "...abaaaaaaba...",
+  "....abbbbbba....",
+  "...abaaaaaaba...",
+  "....abbbbbba....",
+  "...abaaaaaaba...",
+  "....abbbbbba....",
+  "...abaaaaaaba...",
+  "..aaaaaaaaaaaa..",
+  ".abbbbbbbbbbbba.",
+  ".aaaaaaaaaaaaaa.",
+];
+
+const SPIKE = ["....", "....", "....", "....", "....", "....", "....", ".c..", ".c..", ".ca.", ".ca.", "cba.", "cbaa", "cbaa", "cbaa", "aaaa"];
+
+/** Four ice spikes in the bottom half of the cell, drawn with the cloud palette (a = blue, b = pale, c = white). */
+export const SPIKES = SPIKE.map((row) => row.repeat(4));
 
 export const MOON = [
   "......bbbb......",

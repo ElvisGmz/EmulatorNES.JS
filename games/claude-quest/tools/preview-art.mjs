@@ -14,11 +14,16 @@ function backgroundPaletteFor(tile) {
   const t = BACKGROUND_TILES;
   if (tile >= t.GROUND_TOP && tile <= t.GROUND_FILL + 17 && (tile & 0x0f) <= 0x07) return 0;
   if (tile >= t.CLOUD_LEFT && tile <= t.CLOUD_RIGHT + 1) return 1;
+  if ([t.SPIKES, t.SPIKES + 1, t.SPIKES + 16, t.SPIKES + 17].includes(tile)) return 1;
+  if ([t.SPRING, t.SPRING + 1, t.SPRING + 16, t.SPRING + 17].includes(tile)) return 0;
+  if ([t.TOKEN, t.TOKEN + 1, t.TOKEN + 16, t.TOKEN + 17].includes(tile)) return 3;
   if (tile === t.LIFE_ICON || tile >= 0x20) return 2;
   return 3;
 }
 
 function spritePaletteFor(tile) {
+  if (tile >= 0x26 && tile <= 0x29) return 3;
+  if ([0x24, 0x25, 0x34, 0x35].includes(tile)) return 1;
   if (tile >= 0x20) return 2;
   if ((tile & 0x0f) >= 0x08) return 1;
   return 0;

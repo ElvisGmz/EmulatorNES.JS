@@ -9,9 +9,10 @@
 #define GROUND_ACCELERATION 3
 #define AIR_ACCELERATION 2
 #define GRAVITY 4
-#define JUMP_HOLD_GRAVITY 2
+#define JUMP_HOLD_GRAVITY 3
 #define JUMP_VELOCITY -76
 #define BOUNCE_VELOCITY -56
+#define SPRING_VELOCITY -88
 #define MAX_FALL_SPEED 64
 
 // Forgiveness windows that make jumps feel responsive
@@ -65,6 +66,7 @@ void player_spawn(void) {
   coyote_frames = 0;
   jump_buffer = 0;
   cloud_drop = 0;
+  player_platform = NO_PLATFORM;
 }
 
 void player_bounce(void) {
@@ -73,7 +75,8 @@ void player_bounce(void) {
 }
 
 static u8 is_solid(u8 at_x, u8 at_y) {
-  return cell_at(at_x, at_y) == CELL_SOLID;
+  u8 cell = cell_at(at_x, at_y);
+  return cell == CELL_SOLID || cell == CELL_SPRING;
 }
 
 static void move_horizontally(void) {
@@ -128,7 +131,8 @@ static void handle_jump(void) {
 
   jump_buffer = 0;
   coyote_frames = 0;
-  if ((pad_held & PAD_DOWN) && player_on_ground && cell_at(x + 8, y + SPRITE_SIZE) == CELL_CLOUD) {
+  if ((pad_held & PAD_DOWN) && player_on_ground &&
+      (player_platform != NO_PLATFORM || cell_at(x + 8, y + SPRITE_SIZE) == CELL_CLOUD)) {
     cloud_drop = CLOUD_DROP_FRAMES;
   } else {
     player_velocity_y = JUMP_VELOCITY;
@@ -143,6 +147,7 @@ static void move_vertically(void) {
   u8 left_cell;
   u8 right_cell;
   u8 surface;
+  u8 platform;
 
   read_position();
   previous_feet = y + SPRITE_SIZE;
@@ -158,6 +163,7 @@ static void move_vertically(void) {
 
   read_position();
   player_on_ground = 0;
+  player_platform = NO_PLATFORM;
   if (cloud_drop) --cloud_drop;
 
   if (player_velocity_y < 0) {
@@ -175,12 +181,41 @@ static void move_vertically(void) {
   left_cell = cell_at(x + HITBOX_LEFT, feet);
   right_cell = cell_at(x + HITBOX_RIGHT, feet);
 
+  if (left_cell == CELL_SPRING || right_cell == CELL_SPRING) {
+    player_y = (s16)(surface - SPRITE_SIZE) << SUBPIXEL_SHIFT;
+    player_velocity_y = SPRING_VELOCITY;
+    sfx_play(SFX_SPRING);
+    return;
+  }
+
   if (left_cell == CELL_SOLID || right_cell == CELL_SOLID ||
       (!cloud_drop && (left_cell == CELL_CLOUD || right_cell == CELL_CLOUD) && previous_feet <= surface)) {
     player_y = (s16)(surface - SPRITE_SIZE) << SUBPIXEL_SHIFT;
     player_velocity_y = 0;
     player_on_ground = 1;
+    return;
   }
+
+  if (cloud_drop) return;
+  platform = platform_landing(x, previous_feet, feet);
+  if (platform != NO_PLATFORM) {
+    player_y = (s16)(platform_top(platform) - SPRITE_SIZE) << SUBPIXEL_SHIFT;
+    player_velocity_y = 0;
+    player_on_ground = 1;
+    player_platform = platform;
+  }
+}
+
+/** Ice spikes fill the lower part of their cell; touching them there hurts. */
+static u8 is_spike_point(u8 at_x, u8 at_y) {
+  return cell_at(at_x, at_y) == CELL_SPIKES && (at_y & 0x0F) >= 6;
+}
+
+u8 player_touching_spikes(void) {
+  read_position();
+  if (y >= MAP_ROWS * CELL_SIZE - SPRITE_SIZE) return 0;
+  return is_spike_point(x + HITBOX_LEFT + 1, y + SPRITE_SIZE - 1) ||
+         is_spike_point(x + HITBOX_RIGHT - 1, y + SPRITE_SIZE - 1) || is_spike_point(x + 8, y + 8);
 }
 
 void player_update(void) {

@@ -3,12 +3,13 @@
 An original NES platformer starring Claude, written in C and 6502 assembly and built with
 [cc65](https://cc65.github.io/) running as WebAssembly, so it needs nothing but Node.
 
-Collect every token in the level while stomping (or dodging) the bugs. Five levels, music and sound effects.
+Collect every star token in the level while stomping (or dodging) the bugs. Ten levels: five gentle ones and five hard
+ones with springs, ice spikes, flying bugs and moving clouds, each half with its own music.
 
 | Button | Action |
 | --- | --- |
 | D-pad | Move |
-| A | Jump (hold for a higher jump) |
+| A | Jump (hold for a higher jump, also on springs) |
 | B | Run |
 | Down + A | Drop through a cloud |
 | Start | Start / pause |
@@ -32,10 +33,11 @@ games/claude-quest/
 │   ├── crt0.s        # iNES header, reset and NMI (OAM DMA, palette and VRAM queue)
 │   ├── nes.c/h       # PPU, sprites and controller helpers
 │   ├── audio.c/h     # sound driver: 4 music channels + 2 sound effect channels
-│   ├── level.c       # the 5 levels, drawing and collision map
+│   ├── level.c       # the 10 levels, drawing and collision map
 │   ├── player.c      # physics: acceleration, variable jump, coyote time, jump buffer
-│   ├── bugs.c        # enemies
-│   ├── tokens.c      # collectibles
+│   ├── bugs.c        # walking and flying enemies
+│   ├── platforms.c   # moving clouds that carry Claude
+│   ├── tokens.c      # collectible stars (background tiles) and the pickup sparkle
 │   ├── hud.c         # score, lives and text
 │   ├── screens.c     # title and ending screens
 │   └── main.c        # game state machine
@@ -48,8 +50,24 @@ edited as plain text.
 
 ### Editing levels
 
-Levels live in `src/level.c` as 13 rows of 16 characters: `.` sky, `#` ground, `=` cloud (one-way platform),
-`P` player start, `o` token, `b`/`d` bug walking left/right. A jump reaches two rows up.
+Levels live in `src/level.c` as 13 rows of 16 characters:
+
+| Symbol | Meaning |
+| --- | --- |
+| `.` | Sky |
+| `#` | Ground |
+| `=` | Cloud (one-way platform) |
+| `P` | Player start |
+| `o` | Star token |
+| `b` / `d` | Bug walking left / right |
+| `f` | Flying bug |
+| `S` | Spring |
+| `^` | Ice spikes |
+| `H` / `V` | Horizontal / vertical moving cloud (32 px wide) |
+| `:` | Where moving clouds turn around (invisible) |
+
+A tapped jump reaches 2 rows up, a held jump about 3.5 rows and a spring about 5. Keep tokens off columns 0 and 15:
+the emulator crops 8 pixels on each side.
 
 ### Editing music
 

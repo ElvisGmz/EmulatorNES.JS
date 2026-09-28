@@ -14,10 +14,34 @@
 #define INTRO_FRAMES 100
 #define CLEAR_FRAMES 150
 #define GAME_OVER_PROMPT_FRAMES 90
+#define TWINKLE_FRAME_MASK 7
+#define SKY_TWINKLE_PALETTE_INDEX 15
 
 static u8 state;
 static u16 state_timer;
-static char level_title[] = "LEVEL 0";
+static char level_title[] = "LEVEL 10";
+
+static u8 level_song(void) {
+  return current_level >= FIRST_HARD_LEVEL ? SONG_DANGER : SONG_LEVEL;
+}
+
+static void format_level_title(void) {
+  u8 number = current_level + 1;
+  if (number >= 10) {
+    level_title[6] = '1';
+    level_title[7] = '0' + number - 10;
+  } else {
+    level_title[6] = '0' + number;
+    level_title[7] = 0;
+  }
+}
+
+// Stars and tokens share the last sky color, so cycling it makes them all twinkle
+static void twinkle_sky(void) {
+  if (frame_counter & TWINKLE_FRAME_MASK) return;
+  palette_buffer[SKY_TWINKLE_PALETTE_INDEX] = sky_twinkle_colors[(frame_counter >> 3) & (SKY_TWINKLE_COUNT - 1)];
+  palette_dirty = 1;
+}
 
 static void enter_title(void) {
   ppu_off();
@@ -41,10 +65,10 @@ static void enter_level(void) {
   player_spawn();
   // Invincibility is only a grace period after losing a life, not at the start of a level
   player_invincible = 0;
-  level_title[6] = '1' + current_level;
+  format_level_title();
   text_queue_centered(MESSAGE_ROW, level_title);
   text_queue_centered(MESSAGE_ROW + 1, level_name(current_level));
-  music_play(SONG_LEVEL);
+  music_play(level_song());
   state = STATE_INTRO;
   state_timer = INTRO_FRAMES;
 }
@@ -86,11 +110,13 @@ static void update_playing(void) {
     return;
   }
 
+  platforms_update();
+  platforms_carry_player();
   player_update();
   bugs_update();
   tokens_update();
 
-  if (player_fell_off() || bugs_check_player() == 2) {
+  if (player_fell_off() || bugs_check_player() == 2 || (!player_invincible && player_touching_spikes())) {
     start_hurt();
     return;
   }
@@ -124,7 +150,7 @@ static void update_hurt(void) {
   }
 
   player_spawn();
-  music_play(SONG_LEVEL);
+  music_play(level_song());
   state = STATE_PLAYING;
 }
 
@@ -152,8 +178,9 @@ static void draw_world(void) {
   // every frame so the 8-sprites-per-line limit spreads the flicker between them
   if (state == STATE_HURT) player_draw_hurt();
   else if (state != STATE_GAME_OVER) player_draw();
+  platforms_draw(reverse);
   bugs_draw(reverse);
-  tokens_draw(reverse);
+  tokens_draw();
 }
 
 void main(void) {
@@ -202,6 +229,7 @@ void main(void) {
 
     if (state != STATE_TITLE && state != STATE_WIN) draw_world();
     oam_end();
+    twinkle_sky();
 
     audio_update();
     ppu_wait_nmi();
