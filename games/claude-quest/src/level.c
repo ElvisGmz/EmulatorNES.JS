@@ -5,6 +5,12 @@
 // "o" token, "b"/"d" bug walking left/right, "f" flying bug, "S" spring, "^" ice spikes,
 // "H"/"V" horizontal/vertical moving cloud (32 px wide) and ":" where moving clouds turn.
 // A tapped jump reaches 2 rows up, a held one about 3.5 rows, a spring about 5.
+//
+// Troll pieces look like ordinary level parts (or like nothing) until Claude gets close:
+// "%" ground that cracks and falls away (with the ground below it), "!" hidden ice spikes,
+// "Y" a hidden icicle that drops from the ceiling, "h" a moving cloud that darts away from
+// Claude's first jump, "O" a token that runs away to "1", then "2" and "3", and "?" hidden
+// tokens that appear after a fake "LEVEL CLEAR!".
 static const char level_hello[] =
     "................"
     "................"
@@ -80,6 +86,38 @@ static const char level_final[] =
     "####..####..####"
     "####..####..####";
 
+// Troll levels, disguised as ordinary easy levels: the ground falls away under Claude
+static const char level_solid_ground[] =
+    "................"
+    "................"
+    "................"
+    "................"
+    "......o..o......"
+    ".....======....."
+    "....o.....o....."
+    "..o..........o.."
+    ".===........===."
+    "................"
+    ".P.....o....o.b."
+    "###%%%###%%%####"
+    "###%%%###%%%####";
+
+// Spikes pop out of flat ground, and the star at the top runs back to the start
+static const char level_safe_mode[] =
+    "................"
+    "................"
+    "....1......O...."
+    "...====..====..."
+    "................"
+    ".o............o."
+    "===....==....==="
+    "................"
+    "....o......o...."
+    "...===....===..."
+    ".P2...!o.!o...b."
+    "################"
+    "################";
+
 // Hard levels: they mix springs, spikes, flying bugs and moving clouds
 
 static const char level_bounce[] =
@@ -108,6 +146,22 @@ static const char level_train[] =
     ".===........===."
     "........o......."
     "...:H.......:..."
+    ".P............o."
+    "###..........###"
+    "###..........###";
+
+// The same ride as Sky Train, except the low cloud dodges and an icicle waits on the far side
+static const char level_sky_train_2[] =
+    "................"
+    "................"
+    "................"
+    "......o..o......"
+    "....:H......:..."
+    "..........f....."
+    "..o..........o.."
+    ".===........===."
+    "........o....Y.."
+    "...:h.......:..."
     ".P............o."
     "###..........###"
     "###..........###";
@@ -141,6 +195,38 @@ static const char level_buzzing[] =
     ".P............o."
     "######:..:######"
     "######....######";
+
+// Icicles under the big cloud, a spike on it, and a pit right after the spikes you jump
+static const char level_stable_release[] =
+    "................"
+    "................"
+    "..o..........o.."
+    ".===........===."
+    "................"
+    "......o.!o......"
+    ".....======....."
+    "......Y..Y......"
+    "................"
+    "..o..........o.."
+    ".PS......^^..S.."
+    "###########%%###"
+    "###########%%###";
+
+// Four tokens, a fake clear, then four more (with a spike just past the top-left one)
+static const char level_almost_done[] =
+    "................"
+    "................"
+    ".!?..........?.."
+    ".===........===."
+    "........f......."
+    "......o..o......"
+    ".....======....."
+    "................"
+    ".o............o."
+    "===..........==="
+    ".P....?..?....d."
+    "####%%####%%####"
+    "####%%####%%####";
 
 static const char level_last[] =
     "................"
@@ -189,21 +275,27 @@ static const char arena_segfault[] =
     "################"
     "################";
 
+// Troll levels sit among the others and are numbered and named like any other level
 static const char *const levels[LEVEL_COUNT] = {
-    level_hello,    level_gaps,  level_bugs,  level_clouds, level_final,   arena_king_bug,
-    level_bounce,   level_train, level_spikes, level_buzzing, level_last,  arena_segfault,
+    level_hello,          level_gaps,    level_solid_ground, level_bugs,          level_clouds,
+    level_safe_mode,      level_final,   arena_king_bug,     level_bounce,        level_train,
+    level_sky_train_2,    level_spikes,  level_stable_release, level_buzzing,     level_almost_done,
+    level_last,           arena_segfault,
 };
 static const char *const level_names[LEVEL_COUNT] = {
-    "HELLO, WORLD", "MIND THE GAP", "BUG HUNT",     "CLOUD HOP", "FINAL PUSH",     "KING BUG",
-    "BOUNCE HOUSE", "SKY TRAIN",    "SPIKE GARDEN", "BUZZING",   "THE LAST TOKEN", "THE SEGFAULT",
+    "HELLO, WORLD", "MIND THE GAP", "SOLID GROUND",   "BUG HUNT",     "CLOUD HOP",      "SAFE MODE",
+    "FINAL PUSH",   "KING BUG",     "BOUNCE HOUSE",   "SKY TRAIN",    "SKY TRAIN II",   "SPIKE GARDEN",
+    "STABLE RELEASE", "BUZZING",    "ALMOST DONE",    "THE LAST TOKEN", "THE SEGFAULT",
 };
 // Number shown in the HUD and intro; 0 marks a boss arena
-static const u8 level_numbers[LEVEL_COUNT] = {1, 2, 3, 4, 5, 0, 6, 7, 8, 9, 10, 0};
+static const u8 level_numbers[LEVEL_COUNT] = {1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 10, 11, 12, 13, 14, 15, 0};
 static const u8 level_bosses[LEVEL_COUNT] = {
-    BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_KING_BUG,
-    BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_SEGFAULT,
+    BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_KING_BUG, BOSS_NONE,
+    BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_NONE, BOSS_SEGFAULT,
 };
-static const u8 level_bug_speeds[LEVEL_COUNT] = {8, 8, 10, 12, 14, 16, 14, 14, 16, 16, 18, 20};
+// Dying in a troll level costs no life: the level starts over and the HUD counts it
+static const u8 level_trolls[LEVEL_COUNT] = {0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0};
+static const u8 level_bug_speeds[LEVEL_COUNT] = {8, 8, 8, 10, 12, 12, 14, 16, 14, 14, 14, 16, 16, 16, 16, 18, 20};
 
 #define MOON_ROW 3
 #define MOON_COLUMN 13
@@ -269,6 +361,10 @@ u8 level_boss(u8 level) {
   return level_bosses[level];
 }
 
+u8 level_is_troll(u8 level) {
+  return level_trolls[level];
+}
+
 void level_load(u8 level) {
   const char *source = levels[level];
   char symbol;
@@ -281,6 +377,7 @@ void level_load(u8 level) {
   bugs_reset();
   tokens_reset();
   platforms_reset();
+  traps_reset();
 
   for (index = 0; index < LEVEL_FIRST_ROW * MAP_COLUMNS; ++index) level_map[index] = CELL_EMPTY;
 
@@ -306,9 +403,26 @@ void level_load(u8 level) {
         case ':':
           level_map[index] = CELL_MARKER;
           break;
+        case '%':
+          level_map[index] = CELL_SOLID;
+          // A column of "%" falls as one piece, so only its top cell is a trap
+          if (row == 0 || source[-1 - MAP_COLUMNS] != '%') trap_add(TRAP_CRUMBLE, x, y);
+          break;
         case 'o':
+        case 'O':
           level_map[index] = CELL_TOKEN;
           token_add(x, y);
+          if (symbol == 'O') token_make_runaway();
+          break;
+        case '?':
+          // After the fake clear has played, a retry shows every token from the start
+          if (encore_played) {
+            level_map[index] = CELL_TOKEN;
+            token_add(x, y);
+          } else {
+            level_map[index] = CELL_EMPTY;
+            token_add_hidden(x, y);
+          }
           break;
         default:
           level_map[index] = CELL_EMPTY;
@@ -319,8 +433,14 @@ void level_load(u8 level) {
             bug_add(x, y, symbol == 'b', 0);
           } else if (symbol == 'f') {
             bug_add(x, y, 1, 1);
-          } else if (symbol == 'H' || symbol == 'V') {
-            platform_add(x, y, symbol == 'V');
+          } else if (symbol == 'H' || symbol == 'V' || symbol == 'h') {
+            platform_add(x, y, symbol == 'V', symbol == 'h');
+          } else if (symbol == '!') {
+            trap_add(TRAP_SPIKES, x, y);
+          } else if (symbol == 'Y') {
+            icicle_add(x, y);
+          } else if (symbol >= '1' && symbol <= '3') {
+            token_add_runaway_spot(symbol - '1', x, y);
           } else if (symbol == 'X') {
             boss_spawn(level_bosses[level], x);
           }
@@ -444,4 +564,42 @@ void level_draw(void) {
 
   vram_address(ATTRIBUTE_TABLE_A);
   vram_write(attributes, 64);
+}
+
+static void queue_cell_tiles(void) {
+  u8 tile_index = column << 1;
+  vram_queue_bytes(NAMETABLE_ADDR(tile_index, row << 1), &tiles[tile_index], 2);
+  vram_queue_bytes(NAMETABLE_ADDR(tile_index, (row << 1) + 1), &tiles[tile_index + 32], 2);
+}
+
+/**
+ * Turns a cell into another type while the game runs (a trap springing), redrawing it and
+ * its palette next frame. Queues 14 bytes of VRAM writes.
+ */
+void level_set_cell(u8 x, u8 y, u8 type) {
+  u8 quadrant;
+  u8 attribute_index;
+
+  row = y >> 4;
+  column = x >> 4;
+  index = (row << 4) | column;
+  cell = type;
+  level_map[index] = type;
+  row_is_text = (text_rows >> row) & 1;
+  cell_tiles();
+  queue_cell_tiles();
+
+  quadrant = ((row & 1) << 1) + (column & 1);
+  attribute_index = ((row >> 1) << 3) + (column >> 1);
+  attributes[attribute_index] =
+      (attributes[attribute_index] & ~attribute_bits[3][quadrant]) | attribute_bits[cell_palette()][quadrant];
+  vram_queue_bytes(ATTRIBUTE_TABLE_A + attribute_index, &attributes[attribute_index], 1);
+}
+
+/** Draws cracks on a ground cell that is about to fall away. Queues 10 bytes of VRAM writes. */
+void level_draw_cracked_cell(u8 x, u8 y) {
+  row = y >> 4;
+  column = x >> 4;
+  metatile(column << 1, BG_GROUND_CRACKED);
+  queue_cell_tiles();
 }

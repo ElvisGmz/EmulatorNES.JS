@@ -3,8 +3,8 @@
 An original NES platformer starring Claude, written in C and 6502 assembly and built with
 [cc65](https://cc65.github.io/) running as WebAssembly, so it needs nothing but Node.
 
-Collect every star token in the level while stomping (or dodging) the bugs. Ten levels: five gentle ones and five hard
-ones with springs, ice spikes, flying bugs and moving clouds, each half with its own music.
+Collect every star token in the level while stomping (or dodging) the bugs. Fifteen levels: seven gentle ones and eight
+hard ones with springs, ice spikes, flying bugs and moving clouds, each half with its own music.
 
 Each half ends with a souls-style boss fight with its own theme:
 
@@ -44,10 +44,11 @@ games/claude-quest/
 │   ├── crt0.s        # iNES header, reset and NMI (OAM DMA, palette and VRAM queue)
 │   ├── nes.c/h       # PPU, sprites and controller helpers
 │   ├── audio.c/h     # sound driver: 4 music channels + 2 sound effect channels
-│   ├── level.c       # the 10 levels and 2 boss arenas, drawing and collision map
+│   ├── level.c       # the 15 levels and 2 boss arenas, drawing and collision map
 │   ├── player.c      # physics: acceleration, variable jump, coyote time, jump buffer
 │   ├── bugs.c        # walking and flying enemies
-│   ├── platforms.c   # moving clouds that carry Claude
+│   ├── platforms.c   # moving clouds that carry Claude (and troll clouds that dodge)
+│   ├── traps.c       # troll traps: crumbling ground, hidden spikes, falling icicles
 │   ├── tokens.c      # collectible stars (background tiles), star ammo in boss arenas
 │   ├── boss.c        # King Bug and The Segfault: state machines, projectiles, damage
 │   ├── shots.c       # stars thrown by Claude
@@ -82,6 +83,25 @@ Levels live in `src/level.c` as 13 rows of 16 characters:
 
 A tapped jump reaches 2 rows up, a held jump about 3.5 rows and a spring about 5. Keep tokens off columns 0 and 15:
 the emulator crops 8 pixels on each side.
+
+### Troll levels
+
+Levels 3, 6, 10, 12 and 14 are troll levels: they are numbered, named and scored like the others and look the same,
+but hide pieces that only show up when Claude gets close. Every trap has a short warning (cracks, a shaking icicle)
+and stays put on a retry, so it can be learned. Dying there costs no life: a taunt shows under the HUD ("PERDONAME
+NIÑITA", "Y NO TENES EL MAX!?", ...), a `TROLLED` counter goes up (it is also shown on the ending screen) and the
+level starts over. Mark a level as a troll level in `level_trolls` in `src/level.c`.
+
+| Symbol | Meaning |
+| --- | --- |
+| `%` | Ground that cracks when Claude is over it and falls away (with the ground below and every `%` next to it) |
+| `!` | Ice spikes that pop up when Claude is about to walk or land on them |
+| `Y` | Icicle hidden under a cloud; it shakes, then drops, when Claude walks near underneath |
+| `h` | Horizontal moving cloud that darts away from Claude's first jump near it, then moves normally |
+| `O` | Token that runs away to `1`, then `2` and `3`, when Claude gets close |
+| `?` | Token hidden until a fake "LEVEL CLEAR!" (after it has played once, a retry shows it from the start) |
+
+Messages are written in the game's font, where `~` draws an Ñ ("NI~ITA").
 
 ### Editing music
 

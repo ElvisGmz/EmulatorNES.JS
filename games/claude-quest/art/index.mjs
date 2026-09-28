@@ -25,7 +25,7 @@ export const PALETTES = {
     [SKY_COLOR, 0x0f, 0x26, 0x36], // 0 Claude: outline, orange, peach
     [SKY_COLOR, 0x0f, 0x1a, 0x3a], // 1 bugs and flies: outline, green, pale green
     [SKY_COLOR, 0x26, 0x28, 0x30], // 2 sparkles and Claude when hurt: orange, yellow, white
-    [SKY_COLOR, 0x13, 0x23, 0x30], // 3 moving clouds: purple, lavender, white
+    [SKY_COLOR, 0x13, 0x23, 0x30], // 3 moving clouds and icicles: purple, lavender, white
   ],
 };
 
@@ -49,6 +49,7 @@ export const BACKGROUND_TILES = {
   TOKEN: 0x60,
   SPRING: 0x62,
   SPIKES: 0x64,
+  GROUND_CRACKED: 0x66,
   LOGO_FIRST: 0x80,
 };
 
@@ -73,6 +74,7 @@ export const SPRITE_TILES = {
   KING_BUG_2: 0x44,
   SEGFAULT_1: 0x48,
   SEGFAULT_2: 0x4c,
+  ICICLE: 0x80,
 };
 
 function placeRow(table, firstIndex, rows) {
@@ -102,6 +104,7 @@ function buildBackgroundTable() {
   table.placeMeta(t.TOKEN, tiles.TOKEN);
   table.placeMeta(t.SPRING, tiles.SPRING);
   table.placeMeta(t.SPIKES, tiles.SPIKES);
+  table.placeMeta(t.GROUND_CRACKED, tiles.GROUND_CRACKED);
 
   for (const [character, glyph] of Object.entries(FONT_GLYPHS)) {
     table.place(String(character).charCodeAt(0), glyphToTile(glyph));
@@ -127,6 +130,7 @@ function buildSpriteTable() {
   table.placeMeta(t.BUG_SQUASHED, sprites.BUG_SQUASHED);
   table.placeMeta(t.FLY_WINGS_UP, sprites.FLY_WINGS_UP);
   table.placeMeta(t.FLY_WINGS_DOWN, sprites.FLY_WINGS_DOWN);
+  table.placeMeta(t.ICICLE, sprites.ICICLE);
   // Moving clouds are 32x8 sprites: the rounded ends of the background cloud art
   placeRow(table, t.PLATFORM, tiles.CLOUD_LEFT);
   placeRow(table, t.PLATFORM + 2, tiles.CLOUD_RIGHT);

@@ -284,4 +284,12 @@ export const SOUND_EFFECTS = {
   bossHit: { channel: "noise", notes: "S:2 K:3 S:5" },
   explode: { channel: "noise", notes: "K:4 S:4 K:6 S:10" },
   block: { channel: "pulse2", instrument: "chime", notes: "C7:2 G6:2 C7:4" },
+  // Troll levels
+  trolled: { channel: "pulse2", instrument: "sad", notes: "G4:12 F#4:12 F4:12 E4:40" },
+  crumble: { channel: "noise", notes: "S:2 H:2 S:2 H:2 S:3 K:8" },
+  pop: { channel: "pulse2", instrument: "chime", notes: "E6:2 B6:2 E7:8" },
+  runaway: { channel: "pulse2", instrument: "blip", notes: "C6:2 G5:2 C6:2 E6:2 G6:6" },
+  dash: { channel: "noise", notes: "H:1 H:1 S:2 H:3 H:4" },
+  icicle: { channel: "pulse2", instrument: "blip", notes: "B6:2 r:2 B6:2 r:2 B6:3" },
+  shatter: { channel: "noise", notes: "S:2 H:3 H:4" },
 };

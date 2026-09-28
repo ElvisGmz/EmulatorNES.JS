@@ -89,10 +89,13 @@ export async function createPlaytest(rom) {
       audioSamples = [];
       return samples;
     },
-    /** Reads a row of background tiles back as text (font tiles are stored at their ASCII codes). */
+    /** Reads a row of background tiles back as text (font tiles are stored at their ASCII codes, "~" draws Ñ). */
     readTextRow(row) {
-      const tiles = nes.ppu.nameTable[0].tile.slice(row * 32, row * 32 + 32);
-      return String.fromCharCode(...tiles.map((tile) => (tile >= 0x20 && tile < 0x60 ? tile : 0x20))).trim();
+      const tiles = Array.from(nes.ppu.nameTable[0].tile.slice(row * 32, row * 32 + 32));
+      return tiles
+        .map((tile) => (tile === 0x7e ? "Ñ" : tile >= 0x20 && tile < 0x60 ? String.fromCharCode(tile) : " "))
+        .join("")
+        .trim();
     },
     /** Lists visible hardware sprites as { x, y, tile, palette }. */
     sprites() {

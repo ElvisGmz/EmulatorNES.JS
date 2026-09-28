@@ -11,6 +11,8 @@
 #define STATE_GAME_OVER 6
 #define STATE_WIN 7
 #define STATE_DIED 8
+#define STATE_TROLLED 9
+#define STATE_FAKE_CLEAR 10
 
 #define INTRO_FRAMES 100
 #define CLEAR_FRAMES 150
@@ -18,13 +20,32 @@
 #define DIED_FRAMES 150
 #define TWINKLE_FRAME_MASK 7
 #define SKY_TWINKLE_PALETTE_INDEX 15
+// Troll levels: how long the taunt shows before the level starts over
+#define TROLLED_FRAMES 90
+// Fake clear: the clear jingle, then the punchline, then the hidden tokens one by one
+#define FAKE_CLEAR_PUNCHLINE_FRAMES 100
+#define FAKE_CLEAR_REVEAL_FRAMES 176
+#define REVEAL_INTERVAL_MASK 7
+#define MESSAGE_FRAMES 90
+#define TAUNT_COUNT 8
+#define MAX_TROLLED 255
 
 static u8 state;
 static u16 state_timer;
 static char level_title[] = "LEVEL 10";
 
+// "~" is the font's Ñ
+static const char *const taunts[TAUNT_COUNT] = {
+    "PERDONAME NI~ITA", "Y NO TENES EL MAX!?", "GOTCHA!",      "NICE TRY",
+    "STILL TOO EASY?",  "LOL",                 "SKILL ISSUE", "TRUST NO ONE",
+};
+
 static u8 is_boss_level(void) {
   return level_boss(current_level) != BOSS_NONE;
+}
+
+static u8 is_troll_level(void) {
+  return level_is_troll(current_level);
 }
 
 static u8 level_song(void) {
@@ -60,7 +81,7 @@ static void enter_title(void) {
   state = STATE_TITLE;
 }
 
-static void enter_level(void) {
+static void load_level(void) {
   ppu_off();
   oam_begin();
   oam_end();
@@ -75,6 +96,12 @@ static void enter_level(void) {
   star_ammo = 0;
   shots_reset();
   tokens_set_ammo_mode(is_boss_level());
+  message_expire(0);
+}
+
+static void enter_level(void) {
+  encore_played = 0;
+  load_level();
   if (is_boss_level()) {
     text_queue_centered(MESSAGE_ROW, "BOSS FIGHT");
   } else {
@@ -109,33 +136,57 @@ static void update_intro(void) {
   }
 }
 
+/** Troll levels start over right away, traps and all, without the intro. */
+static void restart_level(void) {
+  load_level();
+  music_play(level_song());
+  state = STATE_PLAYING;
+}
+
 static void start_hurt(void) {
   music_stop();
-  sfx_play(SFX_HURT);
   player_start_hurt();
+  if (is_troll_level()) {
+    if (times_trolled < MAX_TROLLED) ++times_trolled;
+    sfx_play(SFX_TROLLED);
+    state = STATE_TROLLED;
+    state_timer = 0;
+    return;
+  }
+  sfx_play(SFX_HURT);
   state = STATE_HURT;
+}
+
+static void start_fake_clear(void) {
+  message_write(MESSAGE_ROW, "LEVEL CLEAR!");
+  music_play(SONG_CLEAR);
+  state = STATE_FAKE_CLEAR;
+  state_timer = 0;
 }
 
 static void update_playing(void) {
   if (pad_pressed & PAD_START) {
     audio_set_paused(1);
-    text_queue_centered(MESSAGE_ROW, "PAUSED");
+    message_write(MESSAGE_ROW, "PAUSED");
     state = STATE_PAUSED;
     return;
   }
 
+  // First, so clearing an old message always fits in this frame's VRAM queue
+  message_update();
   platforms_update();
   platforms_carry_player();
   player_update();
   bugs_update();
   tokens_update();
+  traps_update();
   if (is_boss_level()) {
     shots_update();
     boss_update();
   }
 
   if (player_fell_off() || bugs_check_player() == 2 || (!player_invincible && player_touching_spikes()) ||
-      (is_boss_level() && boss_hurts_player())) {
+      traps_hurt_player() || (is_boss_level() && boss_hurts_player())) {
     start_hurt();
     return;
   }
@@ -146,10 +197,14 @@ static void update_playing(void) {
     bugs_reset();
     shots_reset();
     score_add(SCORE_BOSS);
-    text_queue_centered(MESSAGE_ROW, "GREAT ENEMY FELLED");
+    message_write(MESSAGE_ROW, "GREAT ENEMY FELLED");
   } else {
     if (tokens_left) return;
-    text_queue_centered(MESSAGE_ROW, "LEVEL CLEAR!");
+    if (tokens_hidden_left()) {
+      start_fake_clear();
+      return;
+    }
+    message_write(MESSAGE_ROW, "LEVEL CLEAR!");
   }
   music_play(SONG_CLEAR);
   state = STATE_CLEAR;
@@ -190,6 +245,38 @@ static void update_hurt(void) {
   state = STATE_PLAYING;
 }
 
+/** A troll death: no life lost, just a taunt, one more on the counter and the level again. */
+static void update_trolled(void) {
+  u8 gone = player_update_hurt();
+  // Written a frame after the hit, when the VRAM queue is empty
+  if (state_timer == 0) {
+    message_write(MESSAGE_ROW, taunts[(times_trolled - 1) & (TAUNT_COUNT - 1)]);
+    message_write(MESSAGE_ROW + 1, "");
+    hud_refresh_trolled();
+  }
+  if (++state_timer >= TROLLED_FRAMES && gone) restart_level();
+}
+
+/** "LEVEL CLEAR!"... then the punchline, and the hidden tokens pop in one by one. */
+static void update_fake_clear(void) {
+  ++state_timer;
+  if (state_timer == FAKE_CLEAR_PUNCHLINE_FRAMES) {
+    message_write(MESSAGE_ROW, "JUST KIDDING!");
+    message_write(MESSAGE_ROW + 1, "PERDONAME NI~ITA");
+    sfx_play(SFX_TROLLED);
+    return;
+  }
+  if (state_timer < FAKE_CLEAR_REVEAL_FRAMES || (state_timer & REVEAL_INTERVAL_MASK)) return;
+  if (tokens_hidden_left()) {
+    tokens_reveal_one();
+    return;
+  }
+  encore_played = 1;
+  message_expire(MESSAGE_FRAMES);
+  music_play(level_song());
+  state = STATE_PLAYING;
+}
+
 static void update_clear(void) {
   if (--state_timer) return;
 
@@ -221,7 +308,7 @@ static void draw_world(void) {
 
   // Claude is drawn first so it never flickers; enemies and tokens alternate order
   // every frame so the 8-sprites-per-line limit spreads the flicker between them
-  if (state == STATE_HURT) player_draw_hurt();
+  if (state == STATE_HURT || state == STATE_TROLLED) player_draw_hurt();
   else if (state != STATE_GAME_OVER && state != STATE_DIED) player_draw();
   if (is_boss_level()) {
     shots_draw();
@@ -230,6 +317,7 @@ static void draw_world(void) {
   platforms_draw(reverse);
   bugs_draw(reverse);
   if (is_boss_level() && !reverse) boss_draw();
+  traps_draw();
   tokens_draw();
 }
 
@@ -249,6 +337,7 @@ void main(void) {
         if (pad_pressed & PAD_START) {
           sfx_play(SFX_START);
           score_reset();
+          times_trolled = 0;
           current_level = 0;
           enter_level();
         }
@@ -273,6 +362,12 @@ void main(void) {
         break;
       case STATE_DIED:
         update_died();
+        break;
+      case STATE_TROLLED:
+        update_trolled();
+        break;
+      case STATE_FAKE_CLEAR:
+        update_fake_clear();
         break;
       case STATE_WIN:
         win_update();

@@ -6,8 +6,23 @@ const BUG_PALETTE = 1;
 const PLATFORM_PALETTE = 3;
 const TOKEN_TILE = 0x60;
 const LEVEL_TRANSITION_FRAMES = 160 + 110;
-const KING_BUG_LEVEL = 5;
-const SEGFAULT_LEVEL = 11;
+const KING_BUG_LEVEL = 7;
+const SEGFAULT_LEVEL = 16;
+const BOUNCE_HOUSE_LEVEL = 8;
+const SKY_TRAIN_LEVEL = 9;
+// Troll levels
+const SOLID_GROUND_LEVEL = 2;
+const SAFE_MODE_LEVEL = 5;
+const SKY_TRAIN_2_LEVEL = 10;
+const STABLE_RELEASE_LEVEL = 12;
+const ALMOST_DONE_LEVEL = 14;
+const SPIKES_TILE = 0x64;
+const ICICLE_TILE = 0x80;
+const TROLLED_FRAMES = 90;
+// Clear jingle, punchline, then the hidden tokens popping in every 8 frames
+const FAKE_CLEAR_FRAMES = 240;
+// Most tests play through several levels first, which takes a few seconds in jsnes
+const PLAYTHROUGH_TIMEOUT = 20_000;
 const BOSS_LEVELS = [KING_BUG_LEVEL, SEGFAULT_LEVEL];
 const BOSS_PALETTES = { [KING_BUG_LEVEL]: BUG_PALETTE, [SEGFAULT_LEVEL]: PLATFORM_PALETTE };
 const BOSS_DEFEAT_FRAMES = 130;
@@ -91,9 +106,29 @@ async function startGame() {
     }
   };
 
+  /** Grabs every token on screen, one by one (Claude stays invincible meanwhile). */
+  const grabAllTokens = () => {
+    for (let attempt = 0; attempt < 20 && memory[symbols._tokens_left] > 0; attempt++) {
+      memory[symbols._player_invincible] = 60;
+      const [token] = tokenCells();
+      if (!token) break;
+      place(token.x, token.y);
+      game.frame(3);
+    }
+  };
+
+  /** Left edge of the lowest moving cloud, read back from its sprites. */
+  const lowestCloudX = () => {
+    const parts = game.sprites().filter((sprite) => sprite.palette === PLATFORM_PALETTE && sprite.tile !== ICICLE_TILE);
+    const lowest = Math.max(...parts.map((part) => part.y));
+    return Math.min(...parts.filter((part) => part.y === lowest).map((part) => part.x));
+  };
+
   return {
     game,
     tokenCells,
+    grabAllTokens,
+    lowestCloudX,
     skipToLevel,
     bossPosition,
     throwStarAtBoss,
@@ -115,12 +150,13 @@ async function startGame() {
       ridingPlatform: memory[symbols._player_platform] !== 0xff,
       bossHealth: memory[symbols._boss_health],
       ammo: memory[symbols._star_ammo],
+      trolled: memory[symbols._times_trolled],
     }),
     place,
   };
 }
 
-describe("Claude Quest ROM", () => {
+describe("Claude Quest ROM", { timeout: PLAYTHROUGH_TIMEOUT }, () => {
   it("is a valid NROM cartridge", () => {
     expect([...build.rom.slice(0, 4)]).toEqual([0x4e, 0x45, 0x53, 0x1a]);
     expect(build.rom.length).toBe(16 + 32768 + 8192);
@@ -205,7 +241,7 @@ describe("Claude Quest ROM", () => {
   it("bounces Claude high on springs, higher when A is held", async () => {
     const { game, state, place, skipToLevel, memory, symbols } = await startGame();
     game.frame(30).press(Buttons.START).frame(115);
-    skipToLevel(6);
+    skipToLevel(BOUNCE_HOUSE_LEVEL);
 
     const apexAfterDropOnSpring = () => {
       // The level's fly crosses the spring's path, so keep Claude safe while measuring
@@ -232,7 +268,7 @@ describe("Claude Quest ROM", () => {
   it("hurts Claude on ice spikes", async () => {
     const { game, state, place, skipToLevel, makeVulnerable } = await startGame();
     game.frame(30).press(Buttons.START).frame(115);
-    skipToLevel(6);
+    skipToLevel(BOUNCE_HOUSE_LEVEL);
     makeVulnerable();
     const livesBefore = state().lives;
 
@@ -244,7 +280,7 @@ describe("Claude Quest ROM", () => {
   it("carries Claude on moving clouds", async () => {
     const { game, state, place, skipToLevel } = await startGame();
     game.frame(30).press(Buttons.START).frame(115);
-    skipToLevel(7);
+    skipToLevel(SKY_TRAIN_LEVEL);
     game.frame(20);
 
     const platformSprites = game.sprites().filter((sprite) => sprite.palette === PLATFORM_PALETTE);
@@ -329,19 +365,22 @@ describe("Claude Quest ROM", () => {
     expect(game.readTextRow(4)).toBe("GREAT ENEMY FELLED");
     expect(state().score).toBeGreaterThanOrEqual(scoreBefore + 1000);
     game.frame(160);
-    expect(game.readTextRow(4)).toBe("LEVEL 6");
-    expect(state().level).toBe(6);
+    expect(game.readTextRow(4)).toBe("LEVEL 8");
+    expect(state().level).toBe(BOUNCE_HOUSE_LEVEL);
   });
 
   it("reaches the ending after beating the Segfault", async () => {
-    const { game, skipToLevel, defeatBoss, memory, symbols } = await startGame();
+    const { game, skipToLevel, defeatBoss, grabAllTokens, memory, symbols } = await startGame();
     game.frame(30).press(Buttons.START).frame(115);
-    skipToLevel(9);
+    skipToLevel(ALMOST_DONE_LEVEL);
+    // Level 14 fakes its clear, so its hidden tokens have to be grabbed too
     memory[symbols._tokens_left] = 0;
-    // Level clear jingle, then the level 10 intro message
+    game.frame(FAKE_CLEAR_FRAMES);
+    grabAllTokens();
+    // Level clear jingle, then the level 15 intro message
     game.frame(170);
-    expect(game.readTextRow(2)).toMatch(/LEVEL 10$/);
-    expect(game.readTextRow(4)).toBe("LEVEL 10");
+    expect(game.readTextRow(2)).toMatch(/LEVEL 15$/);
+    expect(game.readTextRow(4)).toBe("LEVEL 15");
     expect(game.readTextRow(5)).toBe("THE LAST TOKEN");
     game.frame(100);
 
@@ -351,8 +390,177 @@ describe("Claude Quest ROM", () => {
     expect(game.readTextRow(5)).toBe("THE SEGFAULT");
     game.frame(100);
 
+    memory[symbols._times_trolled] = 3;
     defeatBoss();
     game.frame(LEVEL_TRANSITION_FRAMES);
     expect(game.readTextRow(6)).toBe("YOU DID IT!");
+    expect(game.readTextRow(13)).toBe("TROLLED 3 TIMES");
+  });
+});
+
+describe("Claude Quest troll levels", { timeout: PLAYTHROUGH_TIMEOUT }, () => {
+  /** Starts a game and plays up to a troll level, past its intro. */
+  async function startTrollLevel(level) {
+    const session = await startGame();
+    session.game.frame(30).press(Buttons.START).frame(115);
+    session.skipToLevel(level);
+    return session;
+  }
+
+  const nametableTile = (game, x, y) => game.nes.ppu.nameTable[0].tile[(y >> 3) * 32 + (x >> 3)];
+
+  it("look like any other level: numbered in order, with an ordinary name", async () => {
+    const { game, state, skipToLevel, memory, symbols } = await startGame();
+    game.frame(30).press(Buttons.START).frame(115);
+    skipToLevel(SOLID_GROUND_LEVEL - 1);
+    memory[symbols._tokens_left] = 0;
+    game.frame(170);
+    expect(state().level).toBe(SOLID_GROUND_LEVEL);
+    expect(game.readTextRow(4)).toBe("LEVEL 3");
+    expect(game.readTextRow(5)).toBe("SOLID GROUND");
+    expect(game.readTextRow(3)).toBe("");
+  });
+
+  it("open a pit under Claude, then start over without costing a life", async () => {
+    const { game, state, place } = await startTrollLevel(SOLID_GROUND_LEVEL);
+    const livesBefore = state().lives;
+    place(16, 192);
+    game.frame(2);
+    expect(nametableTile(game, 48, 208)).not.toBe(0);
+
+    game.hold(Buttons.RIGHT, 60).frame(10);
+    expect(state()).toMatchObject({ trolled: 1, lives: livesBefore });
+    expect(game.readTextRow(4)).toBe("PERDONAME NIÑITA");
+    expect(game.readTextRow(3)).toBe("TROLLED 1");
+
+    game.frame(TROLLED_FRAMES);
+    // The level starts over, pit closed and every token back
+    expect(state()).toMatchObject({ level: SOLID_GROUND_LEVEL, x: 16, y: 192, tokensLeft: 8, lives: livesBefore });
+    expect(nametableTile(game, 48, 208)).not.toBe(0);
+    expect(game.readTextRow(3)).toBe("TROLLED 1");
+  });
+
+  it("pop hidden spikes out of flat ground just ahead of Claude", async () => {
+    const { game, state, place } = await startTrollLevel(SAFE_MODE_LEVEL);
+    const spikesShown = () => nametableTile(game, 96, 192) === SPIKES_TILE;
+    place(16, 192);
+    game.frame(2);
+    expect(spikesShown()).toBe(false);
+
+    game.down(Buttons.RIGHT);
+    for (let frame = 0; frame < 80 && !spikesShown(); frame++) game.frame(1);
+    // They show up before Claude reaches them...
+    expect(spikesShown()).toBe(true);
+    expect(state()).toMatchObject({ trolled: 0 });
+    expect(state().x + 12).toBeLessThan(96);
+    // ...but too late to stop at walking speed
+    game.frame(20).up(Buttons.RIGHT);
+    expect(state().trolled).toBe(1);
+    expect(game.readTextRow(4)).toBe("PERDONAME NIÑITA");
+  });
+
+  it("send the runaway token to its spots before it can be caught", async () => {
+    const { game, state, place, tokenCells } = await startTrollLevel(SAFE_MODE_LEVEL);
+    const tokensBefore = state().tokensLeft;
+    const at = (x, y) => tokenCells().some((cell) => cell.x === x && cell.y === y);
+    expect(at(176, 64)).toBe(true);
+
+    place(150, 64);
+    game.frame(4);
+    expect(game.readTextRow(4)).toBe("Y NO TENES EL MAX!?");
+    expect(at(176, 64)).toBe(false);
+    expect(at(64, 64)).toBe(true);
+
+    place(88, 64);
+    game.frame(4);
+    expect(game.readTextRow(4)).toBe("NOPE!");
+    expect(at(32, 192)).toBe(true);
+    expect(state().tokensLeft).toBe(tokensBefore);
+
+    // Its last spot is where it finally gets caught
+    place(32, 192);
+    game.frame(4);
+    expect(state().tokensLeft).toBe(tokensBefore - 1);
+    expect(at(32, 192)).toBe(false);
+  });
+
+  it("make a troll cloud dart away from Claude's first jump, then ride normally", async () => {
+    const { game, state, place, lowestCloudX } = await startTrollLevel(SKY_TRAIN_2_LEVEL);
+    const waitForCloudAtLeftEnd = () => {
+      for (let frame = 0; frame < 600 && lowestCloudX() > 64; frame++) game.frame(1);
+    };
+    place(32, 192);
+    waitForCloudAtLeftEnd();
+
+    game.down(Buttons.RIGHT).down(Buttons.A).frame(20);
+    expect(lowestCloudX()).toBeGreaterThan(64 + 40);
+    game.frame(60).up(Buttons.RIGHT).up(Buttons.A);
+    expect(state().trolled).toBe(1);
+
+    // After the dash it is an ordinary cloud: hop to set it off, wait for it and board it
+    game.frame(TROLLED_FRAMES);
+    place(32, 192);
+    waitForCloudAtLeftEnd();
+    game.press(Buttons.A, 4, 30);
+    waitForCloudAtLeftEnd();
+    game.down(Buttons.RIGHT).down(Buttons.A);
+    for (let frame = 0; frame < 40 && !state().ridingPlatform; frame++) game.frame(1);
+    game.up(Buttons.RIGHT).up(Buttons.A).frame(30);
+    expect(state()).toMatchObject({ ridingPlatform: true, trolled: 1 });
+  });
+
+  describe("hidden icicles", () => {
+    const icicleShown = (game) => game.sprites().some((sprite) => sprite.tile === ICICLE_TILE);
+    const walkUnderIcicle = async (stopWhenItShakes) => {
+      const { game, state, place } = await startTrollLevel(STABLE_RELEASE_LEVEL);
+      place(40, 192);
+      game.frame(2);
+      expect(icicleShown(game)).toBe(false);
+      game.down(Buttons.RIGHT);
+      for (let frame = 0; frame < 80 && !state().trolled; frame++) {
+        game.frame(1);
+        if (stopWhenItShakes && icicleShown(game)) game.up(Buttons.RIGHT);
+      }
+      game.up(Buttons.RIGHT);
+      return state().trolled;
+    };
+
+    it("drop on Claude walking under them", async () => {
+      expect(await walkUnderIcicle(false)).toBe(1);
+    });
+
+    it("miss Claude if Claude stops when one shakes", async () => {
+      expect(await walkUnderIcicle(true)).toBe(0);
+    });
+  });
+
+  it("fake the level clear, then show more tokens to collect", async () => {
+    const { game, state, grabAllTokens } = await startTrollLevel(ALMOST_DONE_LEVEL);
+    expect(state().tokensLeft).toBe(4);
+
+    grabAllTokens();
+    game.frame(5);
+    expect(game.readTextRow(4)).toBe("LEVEL CLEAR!");
+    game.frame(100);
+    expect(game.readTextRow(4)).toBe("JUST KIDDING!");
+    expect(game.readTextRow(5)).toBe("PERDONAME NIÑITA");
+    game.frame(FAKE_CLEAR_FRAMES - 105);
+    expect(state()).toMatchObject({ level: ALMOST_DONE_LEVEL, tokensLeft: 4 });
+
+    grabAllTokens();
+    game.frame(5);
+    expect(game.readTextRow(4)).toBe("LEVEL CLEAR!");
+    game.frame(170);
+    expect(state().level).toBe(ALMOST_DONE_LEVEL + 1);
+  });
+
+  it("show every token on a retry once the fake clear has played", async () => {
+    const { game, state, place, grabAllTokens, makeVulnerable } = await startTrollLevel(ALMOST_DONE_LEVEL);
+    grabAllTokens();
+    game.frame(FAKE_CLEAR_FRAMES);
+    makeVulnerable();
+    place(72, 240);
+    game.frame(10 + TROLLED_FRAMES);
+    expect(state()).toMatchObject({ level: ALMOST_DONE_LEVEL, tokensLeft: 8, trolled: 1 });
   });
 });

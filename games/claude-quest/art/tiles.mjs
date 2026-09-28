@@ -39,6 +39,26 @@ export const GROUND_FILL = [
   "bbbbbbabbbbbbbbb",
 ];
 
+// Ground about to fall away in a troll level: the sky shows through the cracks
+export const GROUND_CRACKED = [
+  "ccccc.cccccc.ccc",
+  "cccc.cccccc..ccc",
+  "caca.caccc.accc.",
+  "aba.aabaca.bacaa",
+  "bb.abbbbb.bbbbab",
+  "bb.bbbbbb.bbbbbb",
+  "bba.bbbbb.babbbb",
+  "bbb.bbbba.bbbbbb",
+  "bbbb.bbbb.bbbbbb",
+  "babb.bbbb.abbbbb",
+  "bbbbb.bbbb.bbbbb",
+  "bbbbb.bbbb.bbabb",
+  "bbbabb.bbbb.bbbb",
+  "bbbbbb.bbbb.bbbb",
+  "bbbbbbb.bbbb.bbb",
+  "bbbbbab.bbbbb.bb",
+];
+
 export const CLOUD_MIDDLE = [
   "...cc......cc...",
   ".cccccc..cccccc.",
