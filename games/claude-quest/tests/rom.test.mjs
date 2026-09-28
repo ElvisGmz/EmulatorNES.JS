@@ -11,6 +11,9 @@ const SEGFAULT_LEVEL = 11;
 const BOSS_LEVELS = [KING_BUG_LEVEL, SEGFAULT_LEVEL];
 const BOSS_PALETTES = { [KING_BUG_LEVEL]: BUG_PALETTE, [SEGFAULT_LEVEL]: PLATFORM_PALETTE };
 const BOSS_DEFEAT_FRAMES = 130;
+const BOSS_WALKING = 1;
+const BOSS_STUNNED = 5;
+const TOKEN_REGROW_FRAMES = 420;
 
 let build;
 
@@ -63,9 +66,14 @@ async function startGame() {
     return game.press(Buttons.B, 1, 1);
   };
 
+  const stunBoss = () => {
+    memory[symbols._boss_state] = BOSS_STUNNED;
+  };
+
   const defeatBoss = () => {
     for (let attempt = 0; attempt < 200 && memory[symbols._boss_health] > 0; attempt++) {
       memory[symbols._boss_health] = 1;
+      stunBoss();
       throwStarAtBoss();
     }
     game.frame(BOSS_DEFEAT_FRAMES);
@@ -89,6 +97,7 @@ async function startGame() {
     skipToLevel,
     bossPosition,
     throwStarAtBoss,
+    stunBoss,
     defeatBoss,
     symbols,
     memory,
@@ -253,7 +262,8 @@ describe("Claude Quest ROM", () => {
   });
 
   it("fights the King Bug with thrown stars that grow back", async () => {
-    const { game, state, place, skipToLevel, throwStarAtBoss, tokenCells, memory, symbols } = await startGame();
+    const { game, state, place, skipToLevel, throwStarAtBoss, stunBoss, tokenCells, memory, symbols } =
+      await startGame();
     game.frame(30).press(Buttons.START).frame(115);
     skipToLevel(KING_BUG_LEVEL - 1);
     memory[symbols._tokens_left] = 0;
@@ -262,11 +272,11 @@ describe("Claude Quest ROM", () => {
     expect(game.readTextRow(5)).toBe("KING BUG");
     expect(game.readTextRow(3)).toBe("KING BUG");
     game.frame(100);
-    expect(state()).toMatchObject({ bossHealth: 12, ammo: 0 });
+    expect(state()).toMatchObject({ bossHealth: 24, ammo: 0 });
 
     const tokensAtStart = tokenCells().length;
     const [token] = tokenCells();
-    // The King walks toward Claude meanwhile, so keep it safe
+    // The King attacks Claude meanwhile, so keep it safe
     memory[symbols._player_invincible] = 255;
     place(token.x, token.y);
     game.frame(3);
@@ -274,11 +284,20 @@ describe("Claude Quest ROM", () => {
     expect(state().tokensLeft).toBeGreaterThan(0);
     expect(tokenCells()).toHaveLength(tokensAtStart - 1);
     place(token.x + 48, token.y);
-    game.frame(240);
+    for (let waited = 0; waited < TOKEN_REGROW_FRAMES; waited += 60) {
+      memory[symbols._player_invincible] = 255;
+      game.frame(60);
+    }
     expect(tokenCells()).toHaveLength(tokensAtStart);
 
+    // While walking the King faces Claude, and its shell deflects stars thrown at its face
+    memory[symbols._boss_state] = BOSS_WALKING;
     throwStarAtBoss().frame(10);
-    expect(state()).toMatchObject({ bossHealth: 11, ammo: 0 });
+    expect(state()).toMatchObject({ bossHealth: 24, ammo: 0 });
+
+    stunBoss();
+    throwStarAtBoss().frame(10);
+    expect(state()).toMatchObject({ bossHealth: 23, ammo: 0 });
   });
 
   it("brings the boss back to full health after YOU DIED", async () => {
@@ -297,7 +316,7 @@ describe("Claude Quest ROM", () => {
 
     game.frame(160);
     expect(game.readTextRow(4)).toBe("BOSS FIGHT");
-    expect(state()).toMatchObject({ level: KING_BUG_LEVEL, bossHealth: 12 });
+    expect(state()).toMatchObject({ level: KING_BUG_LEVEL, bossHealth: 24 });
   });
 
   it("moves on to the next level once the King Bug falls", async () => {

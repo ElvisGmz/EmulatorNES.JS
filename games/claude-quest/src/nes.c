@@ -109,7 +109,13 @@ void oam_meta_4x4(u8 x, u8 y, u8 first_tile, u8 attributes, u16 visible_tiles) {
     row_tile = first_tile + (row << 4);
     for (column = 0; column < 4; ++column) {
       source_column = (attributes & SPRITE_FLIP_X) ? 3 - column : column;
-      if (row_bits & column_bits[source_column]) oam_sprite(x + (column << 3), y, row_tile + source_column, attributes);
+      if (!(row_bits & column_bits[source_column])) continue;
+      // Written inline: this runs up to 16 times per boss per frame
+      oam[oam_index] = y - 1;
+      oam[oam_index + 1] = row_tile + source_column;
+      oam[oam_index + 2] = attributes;
+      oam[oam_index + 3] = x + (column << 3);
+      oam_index += 4;
     }
     y += 8;
   }

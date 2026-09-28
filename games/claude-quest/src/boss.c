@@ -3,7 +3,8 @@
 #include "audio.h"
 
 // Two bosses share one state machine. Every attack is telegraphed (the boss flashes
-// before it commits) and every attack leaves an opening, souls-style.
+// before it commits) and every attack leaves an opening, souls-style. The King's shell
+// deflects stars from the front: hit it from behind, mid-leap or while it is stunned.
 #define STATE_GONE 0
 #define STATE_IDLE 1
 #define STATE_WINDUP 2
@@ -31,9 +32,9 @@
 #define SEGFAULT_HOME_Y 56
 #define SUBPIXEL_SHIFT 4
 
-#define KING_BUG_HEALTH 12
-#define SEGFAULT_HEALTH 16
-#define HIT_FLASH_FRAMES 10
+#define KING_BUG_HEALTH 24
+#define SEGFAULT_HEALTH 30
+#define HIT_FLASH_FRAMES 16
 #define DYING_FRAMES 120
 #define STOMP_DAMAGE 2
 
@@ -43,9 +44,10 @@
 #define MAX_PROJECTILES 6
 #define PROJECTILE_ORB 0
 #define PROJECTILE_WAVE 1
-#define ORB_SPEED 22
-#define WAVE_SPEED 32
-#define WAVE_SPEED_ENRAGED 44
+#define ORB_SPEED 30
+#define WAVE_SPEED 40
+#define WAVE_SPEED_ENRAGED 52
+#define WAVE_SPEED_SLOW 24
 
 // Collision box inside the 32x32 boss sprite
 #define BOX_LEFT 4
@@ -64,10 +66,11 @@
 
 // Attack cycles; the second half of each boss's health uses the enraged cycle
 static const u8 king_pattern[] = {ATTACK_CHARGE, ATTACK_JUMP, ATTACK_CHARGE, ATTACK_JUMP, ATTACK_JUMP, PATTERN_END};
-static const u8 king_pattern_enraged[] = {ATTACK_JUMP, ATTACK_CHARGE, ATTACK_SUMMON, ATTACK_JUMP,
-                                          ATTACK_JUMP, ATTACK_CHARGE, PATTERN_END};
-static const u8 segfault_pattern[] = {ATTACK_SHOOT, ATTACK_SHOOT, ATTACK_DIVE, ATTACK_TELEPORT, ATTACK_SHOOT,
-                                      ATTACK_DIVE, PATTERN_END};
+static const u8 king_pattern_enraged[] = {ATTACK_JUMP,   ATTACK_JUMP, ATTACK_CHARGE, ATTACK_SUMMON,
+                                          ATTACK_JUMP,   ATTACK_JUMP, ATTACK_JUMP,   ATTACK_CHARGE,
+                                          ATTACK_SUMMON, PATTERN_END};
+static const u8 segfault_pattern[] = {ATTACK_SHOOT, ATTACK_TELEPORT, ATTACK_DIVE, ATTACK_SHOOT,
+                                      ATTACK_SHOOT,  ATTACK_DIVE,     PATTERN_END};
 static const u8 segfault_pattern_enraged[] = {ATTACK_TELEPORT, ATTACK_SHOOT, ATTACK_DIVE, ATTACK_SHOOT,
                                               ATTACK_TELEPORT, ATTACK_DIVE, PATTERN_END};
 static const u8 teleport_spots[4] = {24, 184, 104, 56};
@@ -76,9 +79,10 @@ static const s8 hover_wave[16] = {0, 2, 4, 5, 6, 5, 4, 2, 0, -2, -4, -5, -6, -5,
 
 u8 boss_health;
 u8 boss_max_health;
+// Not static so the headless tests can read and force it
+u8 boss_state;
 
 static u8 boss_type;
-static u8 state;
 static u8 timer;
 static u8 attack;
 static u8 pattern_step;
@@ -94,6 +98,8 @@ static s8 velocity_x;
 static u8 target_x;
 static u8 hover_phase;
 static u8 teleport_index;
+static u8 charges_left;
+static u8 bursts_left;
 
 static u8 projectile_count;
 static u8 projectile_kind[MAX_PROJECTILES];
@@ -101,6 +107,9 @@ static s16 projectile_x[MAX_PROJECTILES];
 static s16 projectile_y[MAX_PROJECTILES];
 static s8 projectile_dx[MAX_PROJECTILES];
 static s8 projectile_dy[MAX_PROJECTILES];
+// Whole-pixel positions, refreshed on every move
+static u8 projectile_px[MAX_PROJECTILES];
+static u8 projectile_py[MAX_PROJECTILES];
 
 static u8 box_top;
 static u8 index;
@@ -118,6 +127,8 @@ static void add_projectile(u8 kind, u8 at_x, u8 at_y, s8 dx, s8 dy) {
   projectile_y[projectile_count] = (s16)at_y << SUBPIXEL_SHIFT;
   projectile_dx[projectile_count] = dx;
   projectile_dy[projectile_count] = dy;
+  projectile_px[projectile_count] = at_x;
+  projectile_py[projectile_count] = at_y;
   ++projectile_count;
 }
 
@@ -128,6 +139,8 @@ static void remove_projectile(void) {
   projectile_y[index] = projectile_y[projectile_count];
   projectile_dx[index] = projectile_dx[projectile_count];
   projectile_dy[index] = projectile_dy[projectile_count];
+  projectile_px[index] = projectile_px[projectile_count];
+  projectile_py[index] = projectile_py[projectile_count];
 }
 
 void boss_spawn(u8 type, u8 at_x) {
@@ -136,6 +149,8 @@ void boss_spawn(u8 type, u8 at_x) {
   pattern_step = 0;
   hit_flash = 0;
   teleport_index = 0;
+  charges_left = 0;
+  bursts_left = 0;
   hover_phase = 0;
   subpixel = 0;
   clear_projectiles();
@@ -155,8 +170,8 @@ void boss_spawn(u8 type, u8 at_x) {
   }
   boss_health = boss_max_health;
   y_position = (s16)y << SUBPIXEL_SHIFT;
-  state = STATE_IDLE;
-  timer = 90;
+  boss_state = STATE_IDLE;
+  timer = 70;
 }
 
 static u8 center_x(void) {
@@ -177,21 +192,23 @@ static u8 next_attack(void) {
 }
 
 static void go_idle(u8 frames) {
-  state = STATE_IDLE;
+  boss_state = STATE_IDLE;
   timer = enraged ? frames >> 1 : frames;
 }
 
 static void start_windup(void) {
   attack = next_attack();
   face_player();
-  state = STATE_WINDUP;
-  timer = enraged ? 26 : 40;
+  boss_state = STATE_WINDUP;
+  timer = enraged ? 18 : 28;
   if (attack == ATTACK_TELEPORT) {
-    state = STATE_TELEPORT_OUT;
-    timer = 30;
+    boss_state = STATE_TELEPORT_OUT;
+    timer = 20;
     return;
   }
-  if (attack == ATTACK_DIVE) timer += 10;
+  if (attack == ATTACK_DIVE) timer += 12;
+  if (attack == ATTACK_CHARGE) charges_left = enraged ? 2 : 1;
+  if (attack == ATTACK_SHOOT) bursts_left = enraged ? 3 : 2;
   sfx_play(SFX_WARN);
 }
 
@@ -214,7 +231,7 @@ static void king_jump(void) {
   // The jump lasts 32 frames, so half the distance per frame (in 1/16 px) lands where Claude stood
   velocity_x = (s8)(distance / 2);
   subpixel = 0;
-  state = STATE_JUMP;
+  boss_state = STATE_JUMP;
 }
 
 static void king_land(void) {
@@ -223,38 +240,51 @@ static void king_land(void) {
   sfx_play(SFX_EXPLODE);
   add_projectile(PROJECTILE_WAVE, x, GROUND_Y + 24, enraged ? -WAVE_SPEED_ENRAGED : -WAVE_SPEED, 0);
   add_projectile(PROJECTILE_WAVE, x + 24, GROUND_Y + 24, enraged ? WAVE_SPEED_ENRAGED : WAVE_SPEED, 0);
-  go_idle(50);
+  // Enraged landings also send a slower second pair, so one jump is not enough
+  if (enraged) {
+    add_projectile(PROJECTILE_WAVE, x, GROUND_Y + 24, -WAVE_SPEED_SLOW, 0);
+    add_projectile(PROJECTILE_WAVE, x + 24, GROUND_Y + 24, WAVE_SPEED_SLOW, 0);
+  }
+  go_idle(36);
 }
 
 static void king_update(void) {
-  switch (state) {
+  switch (boss_state) {
     case STATE_IDLE:
       face_player();
       target_x = facing_left ? LEFT_LIMIT : RIGHT_LIMIT;
-      walk_toward_target(enraged ? 16 : 10);
+      walk_toward_target(enraged ? 22 : 14);
       if (--timer == 0) start_windup();
       break;
     case STATE_WINDUP:
       if (--timer) break;
       if (attack == ATTACK_CHARGE) {
-        state = STATE_CHARGE;
+        boss_state = STATE_CHARGE;
       } else if (attack == ATTACK_JUMP) {
         king_jump();
       } else {
-        // Summon: two minions crawl in from the edges while the king roars
-        if (bugs_alive() < 2) {
+        // Summon: minions crawl in from the edges and a fly joins them overhead
+        if (bugs_alive() < 3) {
           bug_add(LEFT_LIMIT, GROUND_Y + CELL_SIZE, 0, 0);
           bug_add(RIGHT_LIMIT + CELL_SIZE, GROUND_Y + CELL_SIZE, 1, 0);
+          bug_add(px < 120 ? RIGHT_LIMIT : LEFT_LIMIT + 8, 120, px < 120, 1);
         }
-        go_idle(60);
+        go_idle(40);
       }
       break;
     case STATE_CHARGE:
       target_x = facing_left ? LEFT_LIMIT : RIGHT_LIMIT;
-      if (walk_toward_target(enraged ? 72 : 56)) {
+      if (walk_toward_target(enraged ? 84 : 68)) {
         sfx_play(SFX_EXPLODE);
-        state = STATE_STUNNED;
-        timer = enraged ? 70 : 100;
+        if (--charges_left) {
+          // Bounces off the wall and charges straight back after a short flash
+          facing_left = !facing_left;
+          boss_state = STATE_WINDUP;
+          timer = 14;
+        } else {
+          boss_state = STATE_STUNNED;
+          timer = enraged ? 45 : 70;
+        }
       }
       break;
     case STATE_JUMP:
@@ -277,7 +307,7 @@ static void king_update(void) {
 
 // The Segfault ----------------------------------------------------------------
 
-/** Fires orbs at Claude: a 3-way spread, 5-way once enraged. */
+/** Fires orbs at Claude: a 3-way spread, 5-way once enraged. Called once per burst. */
 static void segfault_shoot(void) {
   s16 dx = (s16)px + 4 - (s16)center_x();
   s16 dy = (s16)py + 4 - (s16)(y + 20);
@@ -308,13 +338,13 @@ static void segfault_hover(void) {
 }
 
 static void segfault_update(void) {
-  switch (state) {
+  switch (boss_state) {
     case STATE_IDLE:
       segfault_hover();
       target_x = px > 120 ? px - 72 : px + 40;
       if (target_x < LEFT_LIMIT) target_x = LEFT_LIMIT;
       if (target_x > RIGHT_LIMIT) target_x = RIGHT_LIMIT;
-      walk_toward_target(enraged ? 20 : 12);
+      walk_toward_target(enraged ? 24 : 16);
       if (--timer == 0) start_windup();
       break;
     case STATE_WINDUP:
@@ -327,9 +357,10 @@ static void segfault_update(void) {
       if (--timer) break;
       if (attack == ATTACK_SHOOT) {
         segfault_shoot();
-        go_idle(70);
+        if (--bursts_left) timer = 22;
+        else go_idle(50);
       } else {
-        state = STATE_DIVE;
+        boss_state = STATE_DIVE;
         velocity_y = 0;
         y_position = (s16)y << SUBPIXEL_SHIFT;
       }
@@ -341,15 +372,17 @@ static void segfault_update(void) {
       if (y >= GROUND_Y) {
         y = GROUND_Y;
         sfx_play(SFX_EXPLODE);
-        state = STATE_STUNNED;
-        timer = enraged ? 60 : 90;
+        add_projectile(PROJECTILE_WAVE, x, GROUND_Y + 24, -WAVE_SPEED, 0);
+        add_projectile(PROJECTILE_WAVE, x + 24, GROUND_Y + 24, WAVE_SPEED, 0);
+        boss_state = STATE_STUNNED;
+        timer = enraged ? 40 : 60;
       }
       break;
     case STATE_STUNNED:
-      if (--timer == 0) state = STATE_RISE;
+      if (--timer == 0) boss_state = STATE_RISE;
       break;
     case STATE_RISE:
-      y -= 2;
+      y -= 3;
       if (y <= SEGFAULT_HOME_Y) {
         y = SEGFAULT_HOME_Y;
         hover_phase = 0;
@@ -360,19 +393,20 @@ static void segfault_update(void) {
       if (--timer) break;
       teleport_index = (teleport_index + 1 + (frame_counter & 1)) & 3;
       x = teleport_spots[teleport_index];
-      state = STATE_TELEPORT_IN;
-      timer = 30;
+      boss_state = STATE_TELEPORT_IN;
+      timer = 20;
       break;
     case STATE_TELEPORT_IN:
       segfault_hover();
       if (--timer) break;
       if (enraged) {
         attack = ATTACK_SHOOT;
-        state = STATE_WINDUP;
-        timer = 20;
+        bursts_left = 2;
+        boss_state = STATE_WINDUP;
+        timer = 16;
         sfx_play(SFX_WARN);
       } else {
-        go_idle(50);
+        go_idle(30);
       }
       break;
   }
@@ -389,26 +423,28 @@ static void update_projectiles(void) {
     projectile_y[index] += projectile_dy[index];
     at_x = (u8)(projectile_x[index] >> SUBPIXEL_SHIFT);
     at_y = (u8)(projectile_y[index] >> SUBPIXEL_SHIFT);
-    if (projectile_x[index] < ((s16)LEFT_LIMIT << SUBPIXEL_SHIFT) ||
-        projectile_x[index] > ((s16)(SCREEN_RIGHT + 8) << SUBPIXEL_SHIFT) ||
-        projectile_y[index] < ((s16)24 << SUBPIXEL_SHIFT) || cell_at(at_x + 4, at_y + 4) == CELL_SOLID) {
+    // Positions past an edge wrap around, so one comparison per side covers both
+    if (at_x < LEFT_LIMIT || at_x > SCREEN_RIGHT + 8 || at_y < 24 || at_y > SCREEN_BOTTOM ||
+        cell_at(at_x + 4, at_y + 4) == CELL_SOLID) {
       remove_projectile();
       continue;
     }
+    projectile_px[index] = at_x;
+    projectile_py[index] = at_y;
     ++index;
   }
 }
 
 void boss_update(void) {
-  if (state == STATE_GONE) return;
+  if (boss_state == STATE_GONE) return;
   px = player_pixel_x();
   py = player_pixel_y();
   if (hit_flash) --hit_flash;
   update_projectiles();
 
-  if (state == STATE_DYING) {
+  if (boss_state == STATE_DYING) {
     if ((timer & 15) == 0) sfx_play(SFX_EXPLODE);
-    if (--timer == 0) state = STATE_GONE;
+    if (--timer == 0) boss_state = STATE_GONE;
     return;
   }
 
@@ -422,15 +458,14 @@ static u8 overlaps_player(u8 left, u8 top, u8 right, u8 bottom) {
 }
 
 static u8 is_hidden(void) {
-  return state == STATE_TELEPORT_OUT || state == STATE_TELEPORT_IN || state == STATE_DYING || state == STATE_GONE;
+  return boss_state == STATE_TELEPORT_OUT || boss_state == STATE_TELEPORT_IN || boss_state == STATE_DYING || boss_state == STATE_GONE;
 }
 
 static void take_damage(u8 amount) {
   hit_flash = HIT_FLASH_FRAMES;
-  score_add(SCORE_BOSS_HIT);
   if (boss_health <= amount) {
     boss_health = 0;
-    state = STATE_DYING;
+    boss_state = STATE_DYING;
     timer = DYING_FRAMES;
     clear_projectiles();
   } else {
@@ -450,7 +485,7 @@ u8 boss_hurts_player(void) {
   py = player_pixel_y();
 
   if (!is_hidden() && overlaps_player(x + BOX_LEFT, y + box_top, x + BOX_RIGHT, y + BOX_BOTTOM)) {
-    if (state == STATE_STUNNED) {
+    if (boss_state == STATE_STUNNED) {
       if (player_velocity_y > 0 && py + PLAYER_BOTTOM < y + box_top + STOMP_DEPTH) {
         player_bounce();
         sfx_play(SFX_STOMP);
@@ -463,14 +498,20 @@ u8 boss_hurts_player(void) {
 
   if (player_invincible) return 0;
   for (index = 0; index < projectile_count; ++index) {
-    u8 at_x = (u8)(projectile_x[index] >> SUBPIXEL_SHIFT);
-    u8 at_y = (u8)(projectile_y[index] >> SUBPIXEL_SHIFT);
-    if (overlaps_player(at_x + 2, at_y + 2, at_x + 5, at_y + 7)) return 1;
+    if (projectile_px[index] + 5 < px + PLAYER_LEFT || projectile_px[index] + 2 > px + PLAYER_RIGHT) continue;
+    if (projectile_py[index] + 7 >= py + PLAYER_TOP && projectile_py[index] + 2 <= py + PLAYER_BOTTOM) return 1;
   }
   return 0;
 }
 
-/** Called for each thrown star at its top-left corner; returns 1 when the boss absorbs it. */
+/** The King's shell covers its face while it walks, winds up or charges. */
+static u8 shell_blocks(u8 star_x) {
+  if (boss_type != BOSS_KING_BUG) return 0;
+  if (boss_state != STATE_IDLE && boss_state != STATE_WINDUP && boss_state != STATE_CHARGE) return 0;
+  return facing_left ? star_x < center_x() : star_x >= center_x();
+}
+
+/** Called for each thrown star at its top-left corner; returns 1 when the boss absorbs or deflects it. */
 u8 boss_hit_by_star(u8 star_x, u8 star_y) {
   if (is_hidden()) return 0;
   star_x += 4;
@@ -478,12 +519,13 @@ u8 boss_hit_by_star(u8 star_x, u8 star_y) {
   if (star_x < x + BOX_LEFT || star_x > x + BOX_RIGHT || star_y < y + box_top - 4 || star_y > y + BOX_BOTTOM) {
     return 0;
   }
-  if (!hit_flash) take_damage(1);
+  if (shell_blocks(star_x)) sfx_play(SFX_BLOCK);
+  else if (!hit_flash) take_damage(1);
   return 1;
 }
 
 u8 boss_defeated(void) {
-  return state == STATE_GONE;
+  return boss_state == STATE_GONE;
 }
 
 const char *boss_name(void) {
@@ -496,22 +538,24 @@ void boss_draw(void) {
   u16 mask;
 
   for (index = 0; index < projectile_count; ++index) {
-    oam_sprite((u8)(projectile_x[index] >> SUBPIXEL_SHIFT), (u8)(projectile_y[index] >> SUBPIXEL_SHIFT),
-               projectile_kind[index] == PROJECTILE_ORB ? SPR_BULLET : SPR_SHOCKWAVE,
-               projectile_kind[index] == PROJECTILE_ORB ? SPRITE_PALETTE_SPARKLE : SPRITE_PALETTE_PLATFORM);
+    if (projectile_kind[index] == PROJECTILE_ORB) {
+      oam_sprite(projectile_px[index], projectile_py[index], SPR_BULLET, SPRITE_PALETTE_SPARKLE);
+    } else {
+      oam_sprite(projectile_px[index], projectile_py[index], SPR_SHOCKWAVE, SPRITE_PALETTE_PLATFORM);
+    }
   }
 
-  if (state == STATE_GONE) return;
-  if ((state == STATE_TELEPORT_OUT || state == STATE_TELEPORT_IN || state == STATE_DYING) && (frame_counter & 2)) {
+  if (boss_state == STATE_GONE) return;
+  if ((boss_state == STATE_TELEPORT_OUT || boss_state == STATE_TELEPORT_IN || boss_state == STATE_DYING) && (frame_counter & 2)) {
     return;
   }
 
-  if (hit_flash || state == STATE_DYING || (state == STATE_WINDUP && (frame_counter & 4))) {
+  if (hit_flash || boss_state == STATE_DYING || (boss_state == STATE_WINDUP && (frame_counter & 4))) {
     palette = SPRITE_PALETTE_HURT;
   }
 
   if (boss_type == BOSS_KING_BUG) {
-    if (state == STATE_STUNNED || (x & 8)) {
+    if (boss_state == STATE_STUNNED || (x & 8)) {
       tile = SPR_KING_BUG_2;
       mask = MASK_KING_BUG_2;
     } else {

@@ -76,7 +76,8 @@ static u8 health_bar_tiles(void) {
 
 static void format_health_bar(void) {
   u8 remaining = boss_health;
-  for (length = 0; length < health_bar_tiles(); ++length) {
+  u8 tiles = health_bar_tiles();
+  for (length = 0; length < tiles; ++length) {
     if (remaining >= HEALTH_PER_TILE) {
       line[length] = BG_HEALTH_FULL;
       remaining -= HEALTH_PER_TILE;

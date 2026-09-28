@@ -50,12 +50,11 @@
 #define BOSS_NONE 0
 #define BOSS_KING_BUG 1
 #define BOSS_SEGFAULT 2
-#define MAX_STAR_AMMO 5
+#define MAX_STAR_AMMO 3
 #define STARTING_LIVES 3
 
 #define SCORE_TOKEN 5
 #define SCORE_BUG 10
-#define SCORE_BOSS_HIT 5
 #define SCORE_BOSS 100
 #define SCORE_PER_EXTRA_LIFE 200
 

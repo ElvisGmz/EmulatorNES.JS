@@ -283,4 +283,5 @@ export const SOUND_EFFECTS = {
   warn: { channel: "pulse2", instrument: "chime", notes: "A5:5 r:3 A5:5 r:3 A5:8" },
   bossHit: { channel: "noise", notes: "S:2 K:3 S:5" },
   explode: { channel: "noise", notes: "K:4 S:4 K:6 S:10" },
+  block: { channel: "pulse2", instrument: "chime", notes: "C7:2 G6:2 C7:4" },
 };

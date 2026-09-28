@@ -6,11 +6,16 @@ An original NES platformer starring Claude, written in C and 6502 assembly and b
 Collect every star token in the level while stomping (or dodging) the bugs. Ten levels: five gentle ones and five hard
 ones with springs, ice spikes, flying bugs and moving clouds, each half with its own music.
 
-Each half ends with a boss fight with its own theme: **King Bug** charges, leaps and sends shockwaves along the
-ground; **The Segfault** fires spreads of orbs, teleports and dives. In boss arenas the tokens are star ammo (up to 5)
-that grows back a few seconds after you grab it: throw stars with B. Every attack is telegraphed by a flash, and a
-stunned boss can be stomped for double damage. Fall and you get "YOU DIED": the boss comes back at full health. On
-game over, Start continues from the same level.
+Each half ends with a souls-style boss fight with its own theme:
+
+- **King Bug** charges (twice when enraged), leaps at you and sends shockwaves along the ground. Its shell deflects
+  stars thrown at its face: hit it from behind, mid-leap, or while it is stunned against a wall.
+- **The Segfault** fires aimed bursts of orbs, teleports, and dives on you, shaking the ground when it lands.
+
+At half health both get enraged: faster, with extra attacks and, for the King, minions. In boss arenas the tokens are
+star ammo (up to 3) that grows back 7 seconds after you grab it: throw stars with B. Every attack is telegraphed by a
+flash, and a stunned boss can be stomped for double damage. Fall and you get "YOU DIED": the boss comes back at full
+health. On game over, Start continues from the same level.
 
 | Button | Action |
 | --- | --- |

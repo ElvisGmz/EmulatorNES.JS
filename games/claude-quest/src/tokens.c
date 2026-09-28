@@ -12,7 +12,7 @@
 #define REACH_RIGHT 13
 #define REACH_TOP 2
 #define REACH_BOTTOM 15
-#define REGROW_FRAMES 240
+#define REGROW_FRAMES 420
 
 u8 tokens_left;
 
