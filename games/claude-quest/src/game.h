@@ -43,9 +43,9 @@
 #define MAX_TOKENS 10
 #define MAX_PLATFORMS 3
 #define NO_PLATFORM 0xFF
-#define LEVEL_COUNT 12
+#define LEVEL_COUNT 17
 // Levels from this index on are the hard ones, with their own music
-#define FIRST_HARD_LEVEL 6
+#define FIRST_HARD_LEVEL 8
 
 #define BOSS_NONE 0
 #define BOSS_KING_BUG 1
@@ -73,7 +73,10 @@ void sky_draw(u8 ground_row, u16 text_row_mask);
 const char *level_name(u8 level);
 u8 level_number(u8 level);
 u8 level_boss(u8 level);
+u8 level_is_troll(u8 level);
 void level_draw_token_cell(u8 x, u8 y);
+void level_set_cell(u8 x, u8 y, u8 type);
+void level_draw_cracked_cell(u8 x, u8 y);
 
 // player.c
 extern s16 player_x;
@@ -111,6 +114,14 @@ void tokens_update(void);
 void tokens_draw(void);
 // In boss arenas tokens are star ammo and grow back after being picked up
 void tokens_set_ammo_mode(u8 enabled);
+// Troll levels: a star that runs away to numbered spots, and hidden stars for an encore
+// after a fake "LEVEL CLEAR!" (played once per visit, then they are ordinary stars)
+extern u8 encore_played;
+void token_make_runaway(void);
+void token_add_runaway_spot(u8 spot, u8 x, u8 y);
+void token_add_hidden(u8 x, u8 y);
+u8 tokens_hidden_left(void);
+void tokens_reveal_one(void);
 
 // boss.c
 extern u8 boss_health;
@@ -133,17 +144,31 @@ void shots_draw(void);
 extern u8 platform_count;
 extern u8 player_platform;
 void platforms_reset(void);
-void platform_add(u8 x, u8 y, u8 vertical);
+// A troll cloud moves like any other until Claude jumps at it, then darts away once
+void platform_add(u8 x, u8 y, u8 vertical, u8 troll);
 void platforms_update(void);
 void platforms_draw(u8 reverse);
 void platforms_carry_player(void);
 u8 platform_landing(u8 x, u8 previous_feet, u8 feet);
 u8 platform_top(u8 index);
 
+// traps.c: ground that falls away, spikes that pop up and icicles that drop, all
+// invisible (or looking like ordinary ground) until Claude gets close
+#define TRAP_CRUMBLE 0
+#define TRAP_SPIKES 1
+void traps_reset(void);
+void trap_add(u8 kind, u8 x, u8 y);
+void icicle_add(u8 x, u8 y);
+void traps_update(void);
+void traps_draw(void);
+u8 traps_hurt_player(void);
+
 // hud.c
 // Score is stored in tens, so a u16 can hold up to 655350 points
 extern u16 score;
 extern u8 lives;
+// Deaths in troll levels (which cost no lives), shown in the HUD once there is one
+extern u8 times_trolled;
 void text_write(u8 column, u8 row, const char *text);
 void text_queue(u8 column, u8 row, const char *text);
 void text_queue_centered(u8 row, const char *text);
@@ -155,6 +180,14 @@ void score_reset(void);
 void score_add(u8 tens);
 void hud_refresh_boss(void);
 void hud_refresh_ammo(void);
+void hud_refresh_trolled(void);
+// Writes times_trolled without leading zeros and returns how many digits it took
+u8 format_trolled(u8 *out);
+// Messages under the HUD (up to 20 characters, centered), on MESSAGE_ROW or the row below.
+// message_expire clears both rows after that many frames of play (0 cancels it).
+void message_write(u8 row, const char *text);
+void message_expire(u8 frames);
+void message_update(void);
 
 // screens.c
 void title_draw(void);

@@ -1,12 +1,24 @@
 #include "game.h"
 #include "assets.h"
+#include "audio.h"
 
 // Moving clouds: 32x8 one-way platforms that go back and forth, turning at ":" markers,
-// solid blocks or the screen edges, and carry Claude along while it stands on them
+// solid blocks or the screen edges, and carry Claude along while it stands on them.
+// Troll clouds look and move the same, but the first time Claude jumps near one it darts
+// away from Claude until it has to turn, then goes back to its normal pace.
 #define PLATFORM_WIDTH 32
 #define PLATFORM_HEIGHT 8
 #define HORIZONTAL_SPEED 12
 #define VERTICAL_SPEED 8
+#define DASH_SPEED 48
+// Claude's jump sets it off when Claude's middle is this close to the cloud's middle...
+#define DASH_RANGE 48
+// ...and Claude's feet are at most 3 rows below the cloud top or 5 rows above it
+#define DASH_BELOW 48
+#define DASH_ABOVE 80
+#define TROLL_NONE 0
+#define TROLL_ARMED 1
+#define TROLL_DASHING 2
 #define SUBPIXELS_PER_PIXEL 16
 #define TOP_LIMIT 40
 #define BOTTOM_LIMIT 216
@@ -21,6 +33,7 @@ static u8 platform_forward[MAX_PLATFORMS];
 static u8 platform_subpixel[MAX_PLATFORMS];
 static s8 platform_dx[MAX_PLATFORMS];
 static s8 platform_dy[MAX_PLATFORMS];
+static u8 platform_troll[MAX_PLATFORMS];
 
 static u8 index;
 
@@ -29,13 +42,14 @@ void platforms_reset(void) {
   player_platform = NO_PLATFORM;
 }
 
-void platform_add(u8 x, u8 y, u8 vertical) {
+void platform_add(u8 x, u8 y, u8 vertical, u8 troll) {
   if (platform_count == MAX_PLATFORMS) return;
   platform_x[platform_count] = x;
   platform_y[platform_count] = y;
   platform_vertical[platform_count] = vertical;
   platform_forward[platform_count] = 1;
   platform_subpixel[platform_count] = 0;
+  platform_troll[platform_count] = troll ? TROLL_ARMED : TROLL_NONE;
   ++platform_count;
 }
 
@@ -55,20 +69,13 @@ static u8 can_move_vertically(u8 next_y) {
   return !blocks_platform(cell_at(platform_x[index] + 8, edge)) && cell_at(platform_x[index] + 8, edge) != CELL_CLOUD;
 }
 
-static void move(void) {
+static void step(void) {
   u8 next;
-  u8 speed = platform_vertical[index] ? VERTICAL_SPEED : HORIZONTAL_SPEED;
-
-  platform_dx[index] = 0;
-  platform_dy[index] = 0;
-  platform_subpixel[index] += speed;
-  if (platform_subpixel[index] < SUBPIXELS_PER_PIXEL) return;
-  platform_subpixel[index] -= SUBPIXELS_PER_PIXEL;
 
   if (platform_vertical[index]) {
     next = platform_forward[index] ? platform_y[index] + 1 : platform_y[index] - 1;
     if (can_move_vertically(next)) {
-      platform_dy[index] = platform_forward[index] ? 1 : -1;
+      platform_dy[index] += platform_forward[index] ? 1 : -1;
       platform_y[index] = next;
     } else {
       platform_forward[index] = !platform_forward[index];
@@ -78,15 +85,51 @@ static void move(void) {
 
   next = platform_forward[index] ? platform_x[index] + 1 : platform_x[index] - 1;
   if (can_move_horizontally(next)) {
-    platform_dx[index] = platform_forward[index] ? 1 : -1;
+    platform_dx[index] += platform_forward[index] ? 1 : -1;
     platform_x[index] = next;
   } else {
     platform_forward[index] = !platform_forward[index];
+    if (platform_troll[index] == TROLL_DASHING) platform_troll[index] = TROLL_NONE;
   }
 }
 
+static void move(void) {
+  u8 speed = platform_vertical[index] ? VERTICAL_SPEED : HORIZONTAL_SPEED;
+  if (platform_troll[index] == TROLL_DASHING) speed = DASH_SPEED;
+
+  platform_dx[index] = 0;
+  platform_dy[index] = 0;
+  platform_subpixel[index] += speed;
+  while (platform_subpixel[index] >= SUBPIXELS_PER_PIXEL) {
+    platform_subpixel[index] -= SUBPIXELS_PER_PIXEL;
+    step();
+  }
+}
+
+/** A troll cloud darts away the first time Claude jumps close to it. */
+static void check_troll(void) {
+  s16 claude_middle;
+  s16 cloud_middle;
+  s16 feet;
+
+  if (platform_troll[index] != TROLL_ARMED || player_on_ground) return;
+  claude_middle = (s16)player_pixel_x() + 8;
+  cloud_middle = (s16)platform_x[index] + (PLATFORM_WIDTH >> 1);
+  if (claude_middle + DASH_RANGE <= cloud_middle || claude_middle >= cloud_middle + DASH_RANGE) return;
+  feet = (s16)player_pixel_y() + 16;
+  if (feet > (s16)platform_y[index] + DASH_BELOW || feet + DASH_ABOVE < (s16)platform_y[index]) return;
+
+  platform_troll[index] = TROLL_DASHING;
+  platform_forward[index] = claude_middle < cloud_middle;
+  platform_subpixel[index] = 0;
+  sfx_play(SFX_DASH);
+}
+
 void platforms_update(void) {
-  for (index = 0; index < platform_count; ++index) move();
+  for (index = 0; index < platform_count; ++index) {
+    check_troll();
+    move();
+  }
 }
 
 /** Moves Claude with the cloud it is standing on; call right after platforms_update. */

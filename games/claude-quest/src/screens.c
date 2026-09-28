@@ -14,9 +14,12 @@
 
 #define WIN_TEXT_ROWS ((1 << 3) | (1 << 4) | (1 << 6) | (1 << 7) | (1 << 9))
 #define WIN_PROMPT_ROW 18
+#define WIN_TROLLED_ROW 13
 
 static const char press_start[] = "PRESS START";
 static const char blank_prompt[] = "           ";
+static const char trolled_label[] = "TROLLED ";
+static const char times_label[] = " TIMES";
 
 // Decorative tokens floating around the title and ending screens
 static const u8 decoration_x[] = {40, 208, 64, 184, 120};
@@ -97,6 +100,19 @@ void title_update(void) {
   draw_decorations();
 }
 
+/** "TROLLED 12 TIMES" under the score on the ending screen. */
+static void write_trolled(void) {
+  u8 text[20];
+  u8 length;
+  for (length = 0; trolled_label[length]; ++length) text[length] = trolled_label[length];
+  length += format_trolled(&text[length]);
+  for (index = 0; times_label[index]; ++index) text[length++] = times_label[index];
+  // "1 TIME", not "1 TIMES"
+  if (times_trolled == 1) --length;
+  vram_address(NAMETABLE_ADDR((32 - length) >> 1, WIN_TROLLED_ROW));
+  vram_write(text, length);
+}
+
 void win_draw(void) {
   u8 digits[6];
   u16 value = score;
@@ -115,6 +131,7 @@ void win_draw(void) {
   vram_address(NAMETABLE_ADDR(16, 12));
   vram_write(digits, 6);
 
+  if (times_trolled) write_trolled();
   text_write(7, 15, "THANKS FOR PLAYING");
   text_write(10, WIN_PROMPT_ROW, press_start);
   reset_walker();

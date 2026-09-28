@@ -135,6 +135,26 @@ export const FLY_WINGS_DOWN = [
   "................",
 ];
 
+// Icicle that drops from the ceiling in troll levels (moving cloud palette: purple, lavender, white)
+export const ICICLE = [
+  "..aaaaaaaaaaaa..",
+  "..abbcccbbbbba..",
+  "...abcbbbbbba...",
+  "...abcbbbbbba...",
+  "....abcbbbba....",
+  "....abcbbbba....",
+  "....abcbbbba....",
+  ".....abcbba.....",
+  ".....abcbba.....",
+  ".....abcbba.....",
+  "......acba......",
+  "......acba......",
+  "......abba......",
+  ".......ca.......",
+  ".......ba.......",
+  ".......a........",
+];
+
 // Decorative sparkles for the title and ending screens (tokens in levels are background tiles)
 export const TOKEN_FRAMES = [
   ["...b....", "...c....", "..bcb...", "bcccccb.", "..bcb...", "...c....", "...b....", "........"],

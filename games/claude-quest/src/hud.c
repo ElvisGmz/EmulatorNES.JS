@@ -14,9 +14,17 @@
 #define HEALTH_BAR_END_COLUMN 30
 #define HEALTH_PER_TILE 2
 #define MAX_LIVES 9
+// The troll counter shares the boss name row, which is free outside boss arenas
+#define TROLLED_COLUMN 2
+#define TROLLED_DIGITS_COLUMN 10
+#define MESSAGE_WIDTH 20
+#define MESSAGE_COLUMN ((SCREEN_COLUMNS - MESSAGE_WIDTH) >> 1)
 
 u16 score;
 u8 lives;
+u8 times_trolled;
+
+static u8 message_timer;
 
 static u16 next_extra_life;
 static u8 digits[6];
@@ -70,6 +78,15 @@ static void format_ammo(void) {
   line[2] = '0' + star_ammo;
 }
 
+u8 format_trolled(u8 *out) {
+  u8 value = times_trolled;
+  u8 count = 0;
+  if (value >= 100) out[count++] = '0' + value / 100;
+  if (value >= 10) out[count++] = '0' + (value / 10) % 10;
+  out[count++] = '0' + value % 10;
+  return count;
+}
+
 static u8 health_bar_tiles(void) {
   return (boss_max_health + HEALTH_PER_TILE - 1) / HEALTH_PER_TILE;
 }
@@ -94,8 +111,12 @@ static u8 is_boss_level(void) {
 
 void hud_draw(void) {
   text_write(SCORE_COLUMN, HUD_ROW, "SCORE");
-  if (is_boss_level()) text_write(BOSS_NAME_COLUMN, BOSS_ROW, boss_name());
-  else text_write(LEVEL_COLUMN, HUD_ROW, "LEVEL");
+  if (is_boss_level()) {
+    text_write(BOSS_NAME_COLUMN, BOSS_ROW, boss_name());
+  } else {
+    text_write(LEVEL_COLUMN, HUD_ROW, "LEVEL");
+    if (times_trolled) text_write(TROLLED_COLUMN, BOSS_ROW, "TROLLED");
+  }
   hud_refresh_now();
 }
 
@@ -128,6 +149,12 @@ void hud_refresh_now(void) {
     PPU_DATA = '0' + length;
     PPU_DATA = ' ';
   }
+
+  if (times_trolled) {
+    length = format_trolled(line);
+    vram_address(NAMETABLE_ADDR(TROLLED_DIGITS_COLUMN, BOSS_ROW));
+    vram_write(line, length);
+  }
 }
 
 /** Queues the HUD values for the next frame while rendering is on. */
@@ -142,6 +169,31 @@ void hud_refresh(void) {
 void hud_refresh_ammo(void) {
   format_ammo();
   vram_queue_bytes(NAMETABLE_ADDR(AMMO_COLUMN, HUD_ROW), line, 3);
+}
+
+/** Queues the troll counter, label included (it first shows up on the first troll death). */
+void hud_refresh_trolled(void) {
+  text_queue(TROLLED_COLUMN, BOSS_ROW, "TROLLED");
+  length = format_trolled(line);
+  vram_queue_bytes(NAMETABLE_ADDR(TROLLED_DIGITS_COLUMN, BOSS_ROW), line, length);
+}
+
+void message_write(u8 row, const char *text) {
+  u8 start = (MESSAGE_WIDTH - text_length(text)) >> 1;
+  for (length = 0; length < MESSAGE_WIDTH; ++length) line[length] = ' ';
+  for (length = 0; text[length]; ++length) line[start + length] = text[length];
+  vram_queue_bytes(NAMETABLE_ADDR(MESSAGE_COLUMN, row), line, MESSAGE_WIDTH);
+}
+
+void message_expire(u8 frames) {
+  message_timer = frames;
+}
+
+/** Counts down a message and clears its two rows on consecutive frames. */
+void message_update(void) {
+  if (!message_timer) return;
+  if (--message_timer == 1) message_write(MESSAGE_ROW, "");
+  else if (message_timer == 0) message_write(MESSAGE_ROW + 1, "");
 }
 
 void hud_refresh_boss(void) {

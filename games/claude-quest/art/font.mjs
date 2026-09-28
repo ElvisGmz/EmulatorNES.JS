@@ -1,5 +1,6 @@
 // 5x7 pixel font. Each glyph is stored at its ASCII code in the background
 // pattern table, so C code can print strings by writing their characters.
+// "~" draws an Ñ, so Spanish text is written as "NI~ITA".
 export const FONT_GLYPHS = {
   " ": [".....", ".....", ".....", ".....", ".....", ".....", "....."],
   "!": ["..#..", "..#..", "..#..", "..#..", "..#..", ".....", "..#.."],
@@ -49,6 +50,7 @@ export const FONT_GLYPHS = {
   X: ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"],
   Y: ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
   Z: ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"],
+  "~": [".##.#", "#..#.", "#...#", "##..#", "#.#.#", "#..##", "#...#"],
 };
 
 const GLYPH_WIDTH = 5;

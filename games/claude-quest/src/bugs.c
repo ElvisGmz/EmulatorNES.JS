@@ -19,6 +19,8 @@
 // A stomp only counts when Claude's feet are within the top of the bug
 #define STOMP_DEPTH 6
 #define WAVE_STEPS 32
+// Walkers fall when the ground under them falls away (troll levels)
+#define FALL_SPEED 3
 
 // Vertical offset of flying bugs along their wave (one full cycle in 64 frames)
 static const s8 flight_wave[WAVE_STEPS] = {
@@ -91,9 +93,27 @@ static void walk(void) {
   }
 }
 
+static u8 standing(void) {
+  return cell_is_floor(cell_at(bug_x[index] + 8, bug_y[index] + CELL_SIZE));
+}
+
+static void fall(void) {
+  bug_y[index] += FALL_SPEED;
+  if (bug_y[index] >= SCREEN_BOTTOM) {
+    bug_state[index] = BUG_GONE;
+    return;
+  }
+  // Land on the top of whatever floor the bug falls onto
+  if (standing()) bug_y[index] = ((bug_y[index] + CELL_SIZE) & 0xF0) - CELL_SIZE;
+}
+
 void bugs_update(void) {
   for (index = 0; index < bug_count; ++index) {
     if (bug_state[index] == BUG_WALKING) {
+      if (!bug_flying[index] && !standing()) {
+        fall();
+        continue;
+      }
       walk();
       if (bug_flying[index]) {
         ++bug_phase[index];

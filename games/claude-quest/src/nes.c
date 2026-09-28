@@ -65,6 +65,10 @@ void vram_queue_bytes(u16 address, const u8 *data, u8 length) {
   vram_queue[vram_queue_length] = VRAM_QUEUE_END;
 }
 
+u8 vram_queue_space(void) {
+  return VRAM_QUEUE_CAPACITY - vram_queue_length;
+}
+
 void oam_begin(void) {
   oam_index = 0;
 }

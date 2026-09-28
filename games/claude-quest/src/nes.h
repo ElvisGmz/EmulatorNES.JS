@@ -54,6 +54,8 @@ void palette_set(const u8 *palette);
 
 void vram_queue_reset(void);
 void vram_queue_bytes(u16 address, const u8 *data, u8 length);
+// Bytes still free in this frame's queue; each write costs its length plus 3
+u8 vram_queue_space(void);
 
 void oam_begin(void);
 void oam_sprite(u8 x, u8 y, u8 tile, u8 attributes);
