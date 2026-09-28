@@ -18,6 +18,9 @@ importers:
       jsdom:
         specifier: ^30.1.1
         version: 30.1.1
+      romdev-toolchain-cc65:
+        specifier: 0.1.4
+        version: 0.1.4
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
@@ -726,6 +729,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
+  romdev-toolchain-cc65@0.1.4:
+    resolution: {integrity: sha512-aCcmjdSO7Uka9Etv4fIOQTc5Gz/7GUybTO5nMQtmIVt+gtPFke5XFTLdB+DVgu4cRQHtVPa0ZqrYtP9mnrdJJg==}
+    engines: {node: '>=24'}
+
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
@@ -1396,6 +1403,8 @@ snapshots:
       '@rolldown/binding-openharmony-arm64': 1.2.11
       '@rolldown/binding-win32-arm64-msvc': 1.2.11
       '@rolldown/binding-win32-x64-msvc': 1.2.11
+
+  romdev-toolchain-cc65@0.1.4: {}
 
   saxes@6.0.0:
     dependencies:

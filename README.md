@@ -45,8 +45,14 @@ pnpm dev        # http://localhost:5173
 
 3. Credit it in `public/roms/CREDITS.md`.
 
-Only add ROMs you are allowed to distribute (e.g. freely licensed homebrew). Currently bundled: LJ65 and Concentration
-Room by Damian Yerrick (GPL). Players can always load their own ROMs from the UI; those never leave their browser.
+Only add ROMs you are allowed to distribute (e.g. freely licensed homebrew). Currently bundled: Claude: Token Quest
+(original), and LJ65 and Concentration Room by Damian Yerrick (GPL). Players can always load their own ROMs from the UI; those never leave their browser.
+
+## Claude: Token Quest
+
+`games/claude-quest` holds an original NES platformer made for this project, written in C with cc65 (as WebAssembly,
+no native tools). `pnpm rom:build` rebuilds `public/roms/claude-quest/claude-quest.nes`. See its
+[README](games/claude-quest/README.md).
 
 ## Project structure
 

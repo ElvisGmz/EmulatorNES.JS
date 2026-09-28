@@ -1,5 +1,13 @@
 [
   {
+    "id": "claude-quest",
+    "title": "Claude: Token Quest",
+    "file": "claude-quest/claude-quest.nes",
+    "year": 2026,
+    "genre": "Plataformas",
+    "author": "Elvis + Claude"
+  },
+  {
     "id": "super-mario-bros",
     "title": "Super Mario Bros.",
     "file": "super-mario-bros.nes",
