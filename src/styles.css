@@ -298,37 +298,36 @@
     box-shadow: 0 1px 0 var(--color-pad-edge);
   }
 
-  /* A and B sit almost touching on a diagonal so the thumb can roll from one to the other */
+  /* A and B form one capsule split in two halves, so the thumb can roll or rest on both */
   .action-buttons {
     grid-area: actions;
-    @apply relative justify-self-end;
-    width: clamp(9rem, 42vw, 12rem);
-    aspect-ratio: 1.53;
-  }
-
-  .action-button {
-    @apply absolute flex items-center justify-center rounded-full bg-accent font-pixel text-sm text-white/90;
-    width: 48%;
-    aspect-ratio: 1;
+    @apply relative flex justify-self-end overflow-hidden rounded-full bg-accent;
+    width: clamp(9.5rem, 44vw, 12.5rem);
+    aspect-ratio: 2.1;
+    transform: rotate(-15deg);
     box-shadow:
       inset 0 3px 0 rgb(255 255 255 / 0.18),
       0 5px 0 #7a0017;
   }
 
-  .action-button[data-pressed] {
-    @apply bg-accent-strong;
-    transform: translateY(3px);
-    box-shadow: 0 2px 0 #7a0017;
+  .action-button {
+    @apply flex flex-1 items-center justify-center font-pixel text-sm text-white/90;
+    transition: background-color 60ms;
   }
 
   .action-a {
-    top: 0;
-    left: 48%;
+    box-shadow: inset 2px 0 0 rgb(0 0 0 / 0.28);
   }
 
-  .action-b {
-    bottom: 0;
-    left: 0;
+  .action-button[data-pressed] {
+    background: var(--color-accent-strong);
+    box-shadow: inset 0 4px 8px rgb(0 0 0 / 0.3);
+  }
+
+  .action-a[data-pressed] {
+    box-shadow:
+      inset 2px 0 0 rgb(0 0 0 / 0.28),
+      inset 0 4px 8px rgb(0 0 0 / 0.3);
   }
 
   /* Library */

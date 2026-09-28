@@ -65,7 +65,8 @@ function readActionAreas(cluster: HTMLElement): ActionButtonArea[] {
         button,
         centerX: bounds.left + bounds.width / 2,
         centerY: bounds.top + bounds.height / 2,
-        radius: bounds.width / 2,
+        // The capsule halves are rotated, so the shorter side of their bounding box approximates the thumb reach
+        radius: Math.min(bounds.width, bounds.height) / 2,
       },
     ];
   });
